@@ -1,0 +1,111 @@
+---
+
+- name: Install Ceilometer Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openstack-ceilometer-central
+      - openstack-ceilometer-notification
+      - python2-ceilometerclient
+
+#########################################################
+
+- name: Check Exist User - ceilometer
+  shell: |
+    openstack user show ceilometer
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_user_ceilometer
+
+- name: Create User - ceilometer
+  shell: |
+    openstack user create --domain {{ global.openstack.domain.default.id }} --password {{ global.openstack.ceilometer.service.pass }} ceilometer
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_user_ceilometer.rc != 0
+
+- name: Check Role-Assignment - ceilometer
+  shell: |
+    openstack role assignment list --user ceilometer --project {{ global.openstack.ceilometer.service.project }} --names -f value -c User
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_role_assignment_ceilometer
+
+- name: Assignment Role to User - ceilometer
+  shell: |
+    openstack role add --project {{ global.openstack.ceilometer.service.project }} --user ceilometer {{ global.openstack.ceilometer.service.role }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: '"ceilometer@" + global.openstack.domain.default.name not in check_role_assignment_ceilometer.stdout_lines'
+
+- name: Check Service - ceilometer
+  shell: |
+    openstack service show ceilometer -f value
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_service_ceilometer
+
+- name: Create Service - ceilometer
+  shell: |
+    openstack service create --name ceilometer --description "OpenStack Telemetry Service" {{ global.openstack.ceilometer.service.type }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_service_ceilometer.rc != 0
+
+#########################################################
+
+- name: Config Ceilometer - /etc/ceilometer/ceilometer.conf
+  template:
+    src: "ceilometer.conf.j2"
+    dest: "/etc/ceilometer/ceilometer.conf"
+    owner: root
+    group: ceilometer
+    mode: '0640'
+    backup: yes
+  notify: Restart Ceilometer Service - Controller
+
+- name: Config Ceilometer - /etc/ceilometer/pipeline.yaml
+  template:
+    src: "pipeline.yaml.j2"
+    dest: "/etc/ceilometer/pipeline.yaml"
+    owner: root
+    group: ceilometer
+    mode: '0640'
+    backup: yes
+  notify: Restart Ceilometer Service - Controller
+
+- name: Config Ceilometer - /etc/ceilometer/gnocchi_resources.yaml
+  template:
+    src: "gnocchi_resources.yaml.j2"
+    dest: "/etc/ceilometer/gnocchi_resources.yaml"
+    owner: root
+    group: ceilometer
+    mode: '0640'
+    backup: yes
+  notify: Restart Ceilometer Service - Controller
+
+- name: Create DB-Tables for Ceilometer
+  become: yes
+  become_user: ceilometer
+  shell: ceilometer-upgrade --skip-metering-database
+  args:
+    executable: /bin/sh
+  run_once: yes
+
+- name: Ensure Ceilometer Service Running
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - openstack-ceilometer-central
+    - openstack-ceilometer-notification
+

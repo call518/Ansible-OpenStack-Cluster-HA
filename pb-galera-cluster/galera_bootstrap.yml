@@ -1,0 +1,7 @@
+---
+- hosts: galera-cluster
+  serial: 1
+  vars_files:
+    - "vars-global.yml"
+  roles:
+    - galera_bootstrap

@@ -1,0 +1,145 @@
+[DEFAULT]
+log_dir = {{ nova.conf.default.log_dir }}
+enabled_apis = {{ nova.conf.default.enabled_apis }}
+transport_url = {{ nova.conf.default.transport_url }}
+auth_strategy = {{ nova.conf.default.auth_strategy }}
+my_ip = {{ nova.conf.default.my_ip }}
+ec2_listen = {{ nova.conf.default.ec2_listen }}
+osapi_compute_listen = {{ nova.conf.default.osapi_compute_listen }}
+metadata_listen = {{ nova.conf.default.metadata_listen }}
+use_neutron = {{ nova.conf.default.use_neutron }}
+firewall_driver = {{ nova.conf.default.firewall_driver }}
+allow_same_net_traffic = {{ nova.conf.default.allow_same_net_traffic }}
+instance_usage_audit = {{ nova.conf.default.instance_usage_audit }}
+instance_usage_audit_period = {{ nova.conf.default.instance_usage_audit_period }}
+notify_on_state_change = {{ nova.conf.default.notify_on_state_change }}
+compute_monitors = {{ nova.conf.default.compute_monitors }}
+cpu_allocation_ratio = {{ nova.conf.default.cpu_allocation_ratio }}
+ram_allocation_ratio = {{ nova.conf.default.ram_allocation_ratio }}
+instance_name_template = {{ nova.conf.default.instance_name_template }}
+allow_resize_to_same_host = {{ nova.conf.default.allow_resize_to_same_host }}
+block_device_allocate_retries = {{ nova.conf.default.block_device_allocate_retries }}
+block_device_allocate_retries_interval = {{ nova.conf.default.block_device_allocate_retries_interval }}
+block_device_creation_timeout = {{ nova.conf.default.block_device_creation_timeout }}
+[api]
+auth_strategy = {{ nova.conf.api.auth_strategy }}
+[api_database]
+connection = {{ nova.conf.api_database.connection }}
+[barbican]
+[cache]
+enabled = {{ nova.conf.cache.enabled }}
+backend = {{ nova.conf.cache.backend }}
+memcache_servers = {{ nova.conf.cache.memcache_servers }}
+[cells]
+[cinder]
+os_region_name = {{ nova.conf.cinder.os_region_name }}
+[cloudpipe]
+[conductor]
+[cors]
+[cors.subdomain]
+[crypto]
+[database]
+connection = {{ nova.conf.database.connection }}
+[ephemeral_storage_encryption]
+[filter_scheduler]
+#host_subset_size = {{ nova.conf.filter_scheduler.host_subset_size }}
+#max_io_ops_per_host = {{ nova.conf.filter_scheduler.max_io_ops_per_host }}
+#max_instances_per_host = {{ nova.conf.filter_scheduler.max_instances_per_host }}
+#track_instance_changes = {{ nova.conf.filter_scheduler.track_instance_changes }}
+enabled_filters = {% for filter in nova.conf.filter_scheduler.enabled_filters %}{{ filter }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}
+#ram_weight_multiplier = {{ nova.conf.filter_scheduler.ram_weight_multiplier }}
+#cpu_weight_multiplier = {{ nova.conf.filter_scheduler.cpu_weight_multiplier }}
+#disk_weight_multiplier = {{ nova.conf.filter_scheduler.disk_weight_multiplier }}
+#io_ops_weight_multiplier = {{ nova.conf.filter_scheduler.io_ops_weight_multiplier }}
+#pci_weight_multiplier = {{ nova.conf.filter_scheduler.pci_weight_multiplier }}
+#soft_affinity_weight_multiplier = {{ nova.conf.filter_scheduler.soft_affinity_weight_multiplier }}
+#soft_anti_affinity_weight_multiplier = {{ nova.conf.filter_scheduler.soft_anti_affinity_weight_multiplier }}
+#build_failure_weight_multiplier = {{ nova.conf.filter_scheduler.build_failure_weight_multiplier }}
+#shuffle_best_same_weighed_hosts = {{ nova.conf.filter_scheduler.shuffle_best_same_weighed_hosts }}
+[glance]
+api_servers = {{ nova.conf.glance.api_servers }}
+[guestfs]
+[hyperv]
+[image_file_url]
+[ironic]
+[key_manager]
+[keystone_authtoken]
+auth_url = {{ nova.conf.keystone_authtoken.auth_url }}
+memcached_servers = {{ nova.conf.keystone_authtoken.memcached_servers }}
+auth_type = {{ nova.conf.keystone_authtoken.auth_type }}
+project_domain_name = {{ nova.conf.keystone_authtoken.project_domain_name }}
+user_domain_name = {{ nova.conf.keystone_authtoken.user_domain_name }}
+project_name = {{ nova.conf.keystone_authtoken.project_name }}
+region_name = {{ nova.conf.keystone_authtoken.region_name }}
+username = {{ nova.conf.keystone_authtoken.username }}
+password = {{ nova.conf.keystone_authtoken.password }}
+[libvirt]
+virt_type = {{ nova.conf.libvirt.virt_type }}
+disk_cachemodes = {{ nova.conf.libvirt.disk_cachemodes }}
+inject_password = {{ nova.conf.libvirt.inject_password }}
+inject_key = {{ nova.conf.libvirt.inject_key }}
+inject_partition = {{ nova.conf.libvirt.inject_partition }}
+hw_disk_discard = {{ nova.conf.libvirt.hw_disk_discard }}
+images_type = {{ nova.conf.libvirt.images_type }}
+images_rbd_pool = {{ nova.conf.libvirt.images_rbd_pool }}
+images_rbd_ceph_conf = {{ nova.conf.libvirt.images_rbd_ceph_conf }}
+rbd_user = {{ nova.conf.libvirt.rbd_user }}
+rbd_secret_uuid = {{ nova.conf.libvirt.rbd_secret_uuid }}
+live_migration_uri = {{ nova.conf.libvirt.live_migration_uri }}
+live_migration_flag = {{ nova.conf.libvirt.live_migration_flag }}
+[matchmaker_redis]
+[metrics]
+[mks]
+[neutron]
+url = {{ nova.conf.neutron.url }}
+auth_url = {{ nova.conf.neutron.auth_url }}
+auth_type = {{ nova.conf.neutron.auth_type }}
+project_domain_name = {{ nova.conf.neutron.project_domain_name }}
+user_domain_name = {{ nova.conf.neutron.user_domain_name }}
+region_name = {{ nova.conf.neutron.region_name }}
+project_name = {{ nova.conf.neutron.project_name }}
+username = {{ nova.conf.neutron.username }}
+password = {{ nova.conf.neutron.password }}
+service_metadata_proxy = {{ nova.conf.neutron.service_metadata_proxy }}
+metadata_proxy_shared_secret = {{ nova.conf.neutron.metadata_proxy_shared_secret }}
+[osapi_v21]
+[oslo_concurrency]
+lock_path = {{ nova.conf.oslo_concurrency.lock_path }}
+[oslo_messaging_amqp]
+[oslo_messaging_notifications]
+driver = {{ nova.conf.oslo_messaging_notifications.driver }}
+transport_url = {{ nova.conf.oslo_messaging_notifications.transport_url }}
+[oslo_messaging_rabbit]
+[oslo_messaging_zmq]
+[oslo_middleware]
+[oslo_policy]
+[placement]
+auth_url = {{ nova.conf.placement.auth_url }}
+region_name = {{ nova.conf.placement.region_name }}
+project_domain_name = {{ nova.conf.placement.project_domain_name }}
+user_domain_name = {{ nova.conf.placement.user_domain_name }}
+project_name = {{ nova.conf.placement.project_name }}
+auth_type = {{ nova.conf.placement.auth_type }}
+username = {{ nova.conf.placement.username }}
+password = {{ nova.conf.placement.password }}
+[placement_database]
+connection = {{ nova.conf.placement_database.connection }}
+[rdp]
+[remote_debug]
+[serial_console]
+[spice]
+[ssl]
+[trusted_computing]
+[upgrade_levels]
+[vmware]
+[vnc]
+enabled = {{ nova.conf.vnc.enabled }}
+server_listen = {{ nova.conf.vnc.server_listen }}
+server_proxyclient_address = {{ nova.conf.vnc.server_proxyclient_address }}
+novncproxy_host = {{ nova.conf.vnc.novncproxy_host }}
+novncproxy_port = {{ nova.conf.vnc.novncproxy_port }}
+novncproxy_base_url = {{ nova.conf.vnc.novncproxy_base_url }}
+[workarounds]
+[wsgi]
+[xenserver]
+[xvp]

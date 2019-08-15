@@ -1,0 +1,32 @@
+---
+# defaults file for network-br-ex
+
+network_conf_dir: "/etc/sysconfig/network-scripts"
+
+#fact_external_bridge_interface_name: "{{ global.network.external.bridge_name | replace('-', '_') }}"
+fact_external_bridge_interface_name: "ansible_{{ global.network.external.bridge_name | replace('-', '_') }}"
+
+external_bridge:
+  ifcfg_br_ex:
+    device: "{{ global.network.external.bridge_name }}"
+    device_type: ovs
+    type: OVSBridge
+    #bootproto: static
+    bootproto: none
+    onboot: yes
+    nm_controlled: no
+    #ipaddr: "{{ hostvars[inventory_hostname]['%s' | format(fact_external_bridge_interface_name)].ipv4.address }}"
+    #netmask: "{{ hostvars[inventory_hostname]['%s' | format(fact_external_bridge_interface_name)].ipv4.netmask }}"
+    #gateway: "{{ ansible_default_ipv4.gateway }}"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    mtu: "{{ global.network.external.mtu.br_ex }}"
+
+  ifcfg_ethX:
+    device: "{{ global.network.external.phy_interface }}"
+    device_type: ovs
+    type: OVSPort
+    ovs_bridge: "{{ global.network.external.bridge_name }}"
+    onboot: yes
+    mtu: "{{ global.network.external.mtu.ethX }}"

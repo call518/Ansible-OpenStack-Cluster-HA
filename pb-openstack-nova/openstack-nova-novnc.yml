@@ -1,0 +1,9 @@
+---
+- hosts:
+    - openstack-novnc
+  vars:
+  vars_files:
+    - "vars-global.yml"
+  roles:
+    - openstack-nova
+

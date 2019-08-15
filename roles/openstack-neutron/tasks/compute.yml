@@ -1,0 +1,86 @@
+---
+# tasks file for openstack-neutron-compute
+
+- name: Install Neutron Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openstack-neutron
+      - openstack-neutron-ml2
+      - openstack-neutron-openvswitch
+      - openstack-neutron-metering-agent
+      #- openstack-neutron-linuxbridge
+
+#########################################################
+
+- name: Config Neutron - /etc/neutron/neutron.conf
+  template:
+    src: "neutron.conf.j2"
+    dest: "/etc/neutron/neutron.conf"
+    owner: root
+    group: neutron
+    mode: '0640'
+    backup: yes
+  notify: Restart Neutron Service - Compute::ALL
+
+- name: Config Neutron - /etc/neutron/l3_agent.ini
+  template:
+    src: "l3_agent.ini.j2"
+    dest: "/etc/neutron/l3_agent.ini"
+    owner: root
+    group: neutron
+    mode: '0640'
+    backup: yes
+  notify: Restart Neutron Service - neutron-l3-agent
+
+- name: Config Neutron - /etc/neutron/metering_agent.ini
+  template:
+    src: "metering_agent.ini.j2"
+    dest: "/etc/neutron/metering_agent.ini"
+    owner: root
+    group: neutron
+    mode: '0640'
+    backup: yes
+  notify: Restart Neutron Service - neutron-metering-agent
+
+- name: Config Neutron - /etc/neutron/plugins/ml2/openvswitch_agent.ini
+  template:
+    src: "openvswitch_agent.ini.j2"
+    dest: "/etc/neutron/plugins/ml2/openvswitch_agent.ini"
+    owner: root
+    group: neutron
+    mode: '0640'
+    backup: yes
+  notify: Restart Neutron Service - neutron-openvswitch-agent
+
+- name: Config Neutron - /etc/neutron/plugins/ml2/ml2_conf.ini
+  template:
+    src: "ml2_conf.ini.j2"
+    dest: "/etc/neutron/plugins/ml2/ml2_conf.ini"
+    owner: root
+    group: neutron
+    mode: '0640'
+    backup: yes
+  notify: Restart Neutron Service - Compute::ALL
+
+- name: Config Neutron - Link /etc/neutron/plugins/ml2/ml2_conf.ini to /etc/neutron/plugin.ini
+  file:
+    src: /etc/neutron/plugins/ml2/ml2_conf.ini
+    dest: /etc/neutron/plugin.ini
+    owner: root
+    group: neutron
+    state: link
+
+#########################################################
+
+- name: Ensure Neutron Service Running - ALL
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - neutron-l3-agent
+    - neutron-metering-agent
+    - neutron-openvswitch-agent

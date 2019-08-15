@@ -1,0 +1,66 @@
+[DEFAULT]
+log_dir = {{ neutron.conf.default.log_dir }}
+bind_host = {{ neutron.conf.default.bind_host }}
+transport_url = {{ neutron.conf.default.transport_url }}
+core_plugin = {{ neutron.conf.default.core_plugin }}
+service_plugins = {{ neutron.conf.default.service_plugins | join(',') }}
+allow_overlapping_ips = {{ neutron.conf.default.allow_overlapping_ips }}
+router_distributed = {{ neutron.conf.default.router_distributed }}
+auth_strategy = {{ neutron.conf.default.auth_strategy }}
+notify_nova_on_port_status_changes = {{ neutron.conf.default.notify_nova_on_port_status_changes }}
+notify_nova_on_port_data_changes = {{ neutron.conf.default.notify_nova_on_port_data_changes }}
+#global_physnet_mtu = {{ neutron.conf.default.global_physnet_mtu }}
+#advertise_mtu = {{ neutron.conf.default.advertise_mtu }}
+l3_ha = {{ neutron.conf.default.l3_ha }}
+allow_automatic_l3agent_failover = {{ neutron.conf.default.allow_automatic_l3agent_failover }}
+max_l3_agents_per_router = {{ neutron.conf.default.max_l3_agents_per_router }}
+min_l3_agents_per_router = {{ neutron.conf.default.min_l3_agents_per_router }}
+dhcp_agents_per_network = {{ neutron.conf.default.dhcp_agents_per_network }}
+[agent]
+root_helper = {{ neutron.conf.agent.root_helper }}
+[cors]
+[cors.subdomain]
+[database]
+connection = {{ neutron.conf.database.connection }}
+[keystone_authtoken]
+www_authenticate_uri = {{ neutron.conf.keystone_authtoken.www_authenticate_uri }}
+auth_url = {{ neutron.conf.keystone_authtoken.auth_url }}
+memcached_servers = {{ neutron.conf.keystone_authtoken.memcached_servers }}
+auth_type = {{ neutron.conf.keystone_authtoken.auth_type }}
+project_domain_name = {{ neutron.conf.keystone_authtoken.project_domain_name }}
+user_domain_name = {{ neutron.conf.keystone_authtoken.user_domain_name }}
+project_name = {{ neutron.conf.keystone_authtoken.project_name }}
+region_name = {{ neutron.conf.keystone_authtoken.region_name }}
+username = {{ neutron.conf.keystone_authtoken.username }}
+password = {{ neutron.conf.keystone_authtoken.password }}
+[matchmaker_redis]
+[nova]
+auth_url = {{ neutron.conf.nova.auth_url }}
+auth_type = {{ neutron.conf.nova.auth_type }}
+project_domain_name = {{ neutron.conf.nova.project_domain_name }}
+user_domain_name = {{ neutron.conf.nova.project_domain_name }}
+region_name = {{ neutron.conf.nova.region_name }}
+project_name = {{ neutron.conf.nova.project_name }}
+username = {{ neutron.conf.nova.username }}
+password = {{ neutron.conf.nova.password }}
+[oslo_concurrency]
+lock_path = {{ neutron.conf.oslo_concurrency.lock_path }}
+[oslo_messaging_amqp]
+[oslo_messaging_notifications]
+driver = {{ neutron.conf.oslo_messaging_notifications.driver }}
+transport_url = {{ neutron.conf.oslo_messaging_notifications.transport_url }}
+[oslo_messaging_rabbit]
+[oslo_messaging_zmq]
+[oslo_middleware]
+[oslo_policy]
+[qos]
+[quotas]
+default_quota = {{ neutron.conf.quotas.default_quota }}
+quota_network = {{ neutron.conf.quotas.quota_network }}
+quota_subnet = {{ neutron.conf.quotas.quota_subnet }}
+quota_port = {{ neutron.conf.quotas.quota_port }}
+quota_router = {{ neutron.conf.quotas.quota_router }}
+quota_floatingip = {{ neutron.conf.quotas.quota_floatingip }}
+quota_security_group = {{ neutron.conf.quotas.quota_security_group }}
+quota_security_group_rule = {{ neutron.conf.quotas.quota_security_group_rule }}
+[ssl]

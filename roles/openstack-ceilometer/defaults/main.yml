@@ -1,0 +1,73 @@
+---
+# defaults file for openstack-ceilometer
+
+ceilometer:
+  conf:
+    default:
+      log_dir: /var/log/ceilometer
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      meter_dispatchers: gnocchi
+      event_dispatchers: gnocchi
+      instance_usage_audit: True
+      instance_usage_audit_period: hour
+      notify_on_state_change: vm_and_task_state
+    api:
+    collector:
+    compute:
+    coordination:
+    cors:
+    cors_subdomain:
+    database:
+    dispatcher_file:
+    dispatcher_gnocchi:
+      filter_service_activity: False
+      archive_policy: low
+    dispatcher_http:
+    event:
+    hardware:
+    ipmi:
+    keystone_authtoken:
+      www_authenticate_uri: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      memcached_servers: "{% for host in groups['memcached'] %}{{ host }}:{{ global.memcached.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      auth_type: password
+      project_domain_name: "{{ global.openstack.domain.default.name }}"
+      user_domain_name: "{{ global.openstack.domain.default.name }}"
+      project_name: "{{ global.openstack.ceilometer.service.project }}"
+      username: ceilometer
+      password: "{{ global.openstack.ceilometer.service.pass }}"
+      interface: internalURL
+      region_name: "{{ global.openstack.ceilometer.service.region }}"
+    matchmaker_redis:
+    meter:
+    notification:
+    oslo_concurrency:
+    oslo_messaging_amqp:
+    oslo_messaging_kafka:
+    oslo_messaging_notifications:
+      driver: messagingv2
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+    oslo_messaging_rabbit:
+    oslo_messaging_zmq:
+    oslo_middleware:
+    oslo_policy:
+    polling:
+    publisher:
+    publisher_notifier:
+    rgw_admin_credentials:
+    service_credentials:
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      memcached_servers: "{% for host in groups['memcached'] %}{{ host }}:{{ global.memcached.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      auth_type: password
+      project_domain_name: "{{ global.openstack.domain.default.name }}"
+      user_domain_name: "{{ global.openstack.domain.default.name }}"
+      project_name: "{{ global.openstack.ceilometer.service.project }}"
+      username: ceilometer
+      password: "{{ global.openstack.ceilometer.service.pass }}"
+      interface: internalURL
+      region_name: "{{ global.openstack.ceilometer.service.region }}"
+    service_types:
+    storage:
+    vmware:
+    xenapi:
+

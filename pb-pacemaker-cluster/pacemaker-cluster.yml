@@ -1,0 +1,9 @@
+---
+- hosts:
+    - pacemaker-cluster
+  gather_facts: yes
+  vars:
+  vars_files:
+    - "vars-global.yml"
+  roles:
+    - pacemaker-cluster

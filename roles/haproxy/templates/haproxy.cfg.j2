@@ -1,0 +1,164 @@
+#jinja2: trim_blocks:False
+global
+  chroot {{ haproxy.global.chroot }}
+  daemon
+  user {{ haproxy.global.user }}
+  group {{ haproxy.global.group }}
+  maxconn {{ haproxy.global.maxconn }}
+  log {{ haproxy.global.log }}
+  pidfile {{ haproxy.global.pidfile }}
+  spread-checks {{ haproxy.global.spread_checks }}
+  {% for stats in haproxy.global.stats %}stats {{ stats }}
+  {% endfor %}
+
+defaults
+  log {{ haproxy.default.log }}
+  mode {{ haproxy.default.mode }}
+  retries {{ haproxy.default.retries }}
+  maxconn {{ haproxy.default.maxconn }}
+  {% for option in haproxy.default.options %}option {{ option }}
+  {% endfor %}{% for timeout in haproxy.default.timeouts %}timeout {{ timeout }}
+  {% endfor %}
+
+listen haproxy_stats
+  bind {{ haproxy.listen.haproxy_stats.bind.address }}:{{ haproxy.listen.haproxy_stats.bind.port }}
+  mode {{ haproxy.listen.haproxy_stats.mode }}
+  {% for timeout in haproxy.listen.haproxy_stats.timeouts %}timeout {{ timeout }}
+  {% endfor %}{% for stats in haproxy.listen.haproxy_stats.stats %}stats {{ stats }}
+  {% endfor %}
+
+##########################################################################
+
+listen galera_{{ global.openstack.service_port.galera }}
+  bind {{ haproxy.listen.galera.bind.address }}:{{ haproxy.listen.galera.bind.port }}
+  mode {{ haproxy.listen.galera.mode }}
+  balance {{ haproxy.listen.galera.balance }}
+  {% for option in haproxy.listen.galera.options %}option {{ option }}
+  {% endfor %}{% for timeout in haproxy.listen.galera.timeouts %}timeout {{ timeout }}
+  {% endfor %}default-server port {{ haproxy.listen.galera.default_server.port }} inter {{ haproxy.listen.galera.default_server.inter }} downinter {{ haproxy.listen.galera.default_server.downinter }} rise {{ haproxy.listen.galera.default_server.rise }} fall {{ haproxy.listen.galera.default_server.fall }} slowstart {{ haproxy.listen.galera.default_server.slowstart }} maxconn {{ haproxy.listen.galera.default_server.maxconn }} maxqueue {{ haproxy.listen.galera.default_server.maxqueue }} weight {{ haproxy.listen.galera.default_server.weight }}
+  {% for host in groups['galera-cluster'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.galera.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.galera.bind.port }} check{% if not loop.first %} backup{% endif %}
+  {% endfor %}
+
+listen rabbitmq_management_{{ global.rabbitmq.management.port }}
+  bind {{ haproxy.listen.rabbitmq_management.bind.address }}:{{ haproxy.listen.rabbitmq_management.bind.port }}
+  option httpchk GET {{ haproxy.listen.rabbitmq_management.http_check_get_url }}
+  default-server inter {{ haproxy.listen.rabbitmq_management.server.inter }} rise {{ haproxy.listen.rabbitmq_management.server.rise }} fall {{ haproxy.listen.rabbitmq_management.server.fall }}
+  {% for host in groups['rabbitmq-cluster'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.rabbitmq.management.interface]['ipv4']['address'] }}:{{ haproxy.listen.rabbitmq_management.bind.port }} check 
+  {% endfor %}
+
+listen keystone_{{ global.openstack.service_port.keystone }}
+  bind {{ haproxy.listen.keystone.bind.address }}:{{ haproxy.listen.keystone.bind.port }}
+  option httpchk GET {{ haproxy.listen.keystone.http_check_get_url }}
+  default-server inter {{ haproxy.listen.keystone.server.inter }} rise {{ haproxy.listen.keystone.server.rise }} fall {{ haproxy.listen.keystone.server.fall }}
+  {% for host in groups['openstack-keystone'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.openstack.keystone.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.keystone.bind.port }} check
+  {% endfor %}
+
+listen glance_api_{{ global.openstack.service_port.glance.api }}
+  bind {{ haproxy.listen.glance_api.bind.address }}:{{ haproxy.listen.glance_api.bind.port }}
+  option httpchk GET {{ haproxy.listen.glance_api.http_check_get_url }}
+  default-server inter {{ haproxy.listen.glance_api.server.inter }} rise {{ haproxy.listen.glance_api.server.rise }} fall {{ haproxy.listen.glance_api.server.fall }}
+  {% for host in groups['openstack-glance-api'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.openstack.glance.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.glance_api.bind.port }} check
+  {% endfor %}
+
+listen glance_registry_{{ global.openstack.service_port.glance.registry }}
+  bind {{ haproxy.listen.glance_registry.bind.address }}:{{ haproxy.listen.glance_registry.bind.port }}
+  #option httpchk GET {{ haproxy.listen.glance_registry.http_check_get_url }}
+  default-server inter {{ haproxy.listen.glance_registry.server.inter }} rise {{ haproxy.listen.glance_registry.server.rise }} fall {{ haproxy.listen.glance_registry.server.fall }}
+  {% for host in groups['openstack-glance-registry'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.openstack.glance.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.glance_registry.bind.port }} check
+  {% endfor %}
+
+listen cinder_{{ global.openstack.service_port.cinder }}
+  bind {{ haproxy.listen.cinder.bind.address }}:{{ haproxy.listen.cinder.bind.port }}
+  option httpchk GET {{ haproxy.listen.cinder.http_check_get_url }}
+  default-server inter {{ haproxy.listen.cinder.server.inter }} rise {{ haproxy.listen.cinder.server.rise }} fall {{ haproxy.listen.cinder.server.fall }}
+  {% for host in groups['openstack-cinder'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.openstack.cinder.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.cinder.bind.port }} check
+  {% endfor %}
+
+listen nova_api_{{ global.openstack.service_port.nova.api }}
+  bind {{ haproxy.listen.nova_api.bind.address }}:{{ haproxy.listen.nova_api.bind.port }}
+  option httpchk GET {{ haproxy.listen.nova_api.http_check_get_url }}
+  default-server inter {{ haproxy.listen.nova_api.server.inter }} rise {{ haproxy.listen.nova_api.server.rise }} fall {{ haproxy.listen.nova_api.server.fall }}
+  {% for host in groups['openstack-nova-api'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.openstack.nova.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.nova_api.bind.port }} check
+  {% endfor %}
+
+listen nova_placement_{{ global.openstack.service_port.nova.placement }}
+  bind {{ haproxy.listen.nova_placement.bind.address }}:{{ haproxy.listen.nova_placement.bind.port }}
+  #option httpchk GET {{ haproxy.listen.nova_placement.http_check_get_url }}
+  default-server inter {{ haproxy.listen.nova_placement.server.inter }} rise {{ haproxy.listen.nova_placement.server.rise }} fall {{ haproxy.listen.nova_placement.server.fall }}
+  {% for host in groups['openstack-nova-placement'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.openstack.nova.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.nova_placement.bind.port }} check
+  {% endfor %}
+
+listen nova_metadata_{{ global.openstack.service_port.nova.metadata }}
+  bind {{ haproxy.listen.nova_metadata.bind.address }}:{{ haproxy.listen.nova_metadata.bind.port }}
+  option httpchk GET {{ haproxy.listen.nova_metadata.http_check_get_url }}
+  default-server inter {{ haproxy.listen.nova_metadata.server.inter }} rise {{ haproxy.listen.nova_metadata.server.rise }} fall {{ haproxy.listen.nova_metadata.server.fall }}
+  {% for host in groups['openstack-nova-metadata'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.openstack.nova.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.nova_metadata.bind.port }} check
+  {% endfor %}
+
+listen novnc_{{ global.openstack.service_port.nova.novncproxy }}
+  bind {{ haproxy.listen.novnc.bind.address }}:{{ haproxy.listen.novnc.bind.port }}
+  #option httpchk GET {{ haproxy.listen.novnc.http_check_get_url }}
+  #balance {{ haproxy.listen.novnc.sticky.tcp.balance }}
+  #hash-type {{ haproxy.listen.novnc.sticky.tcp.hash_type }}
+  mode {{ haproxy.listen.novnc.mode }}
+  {% for option in haproxy.listen.novnc.option %}option {{ option }}
+  {% endfor %}default-server inter {{ haproxy.listen.novnc.server.inter }} rise {{ haproxy.listen.novnc.server.rise }} fall {{ haproxy.listen.novnc.server.fall }}
+  {% for host in groups['openstack-novnc'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.novnc.interface]['ipv4']['address'] }}:{{ haproxy.listen.novnc.bind.port }} check
+  {% endfor %}
+
+listen neutron_{{ global.openstack.service_port.neutron }}
+  bind {{ haproxy.listen.neutron.bind.address }}:{{ haproxy.listen.neutron.bind.port }}
+  option httpchk GET {{ haproxy.listen.neutron.http_check_get_url }}
+  default-server inter {{ haproxy.listen.neutron.server.inter }} rise {{ haproxy.listen.neutron.server.rise }} fall {{ haproxy.listen.neutron.server.fall }}
+  {% for host in groups['openstack-neutron'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.openstack.neutron.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.neutron.bind.port }} check
+  {% endfor %}
+
+listen octavia_{{ global.openstack.service_port.octavia.api }}
+  bind {{ haproxy.listen.octavia.bind.address }}:{{ haproxy.listen.octavia.bind.port }}
+  option httpchk GET {{ haproxy.listen.octavia.http_check_get_url }}
+  default-server inter {{ haproxy.listen.octavia.server.inter }} rise {{ haproxy.listen.octavia.server.rise }} fall {{ haproxy.listen.octavia.server.fall }}
+  {% for host in groups['openstack-octavia'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.openstack.octavia.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.octavia.bind.port }} check
+  {% endfor %}
+
+listen gnocchi_{{ global.openstack.service_port.gnocchi }}
+  bind {{ haproxy.listen.gnocchi.bind.address }}:{{ haproxy.listen.gnocchi.bind.port }}
+  option httpchk GET {{ haproxy.listen.gnocchi.http_check_get_url }}
+  default-server inter {{ haproxy.listen.gnocchi.server.inter }} rise {{ haproxy.listen.gnocchi.server.rise }} fall {{ haproxy.listen.gnocchi.server.fall }}
+  {% for host in groups['openstack-gnocchi'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.openstack.gnocchi.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.gnocchi.bind.port }} check
+  {% endfor %}
+
+listen aodh_{{ global.openstack.service_port.aodh }}
+  bind {{ haproxy.listen.aodh.bind.address }}:{{ haproxy.listen.aodh.bind.port }}
+  option httpchk GET {{ haproxy.listen.aodh.http_check_get_url }}
+  default-server inter {{ haproxy.listen.aodh.server.inter }} rise {{ haproxy.listen.aodh.server.rise }} fall {{ haproxy.listen.aodh.server.fall }}
+  {% for host in groups['openstack-aodh'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.openstack.aodh.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.aodh.bind.port }} check
+  {% endfor %}
+
+listen heat_api_{{ global.openstack.service_port.heat_api }}
+  bind {{ haproxy.listen.heat_api.bind.address }}:{{ haproxy.listen.heat_api.bind.port }}
+  option httpchk GET {{ haproxy.listen.heat_api.http_check_get_url }}
+  default-server inter {{ haproxy.listen.heat_api.server.inter }} rise {{ haproxy.listen.heat_api.server.rise }} fall {{ haproxy.listen.heat_api.server.fall }}
+  {% for host in groups['openstack-heat'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.openstack.heat.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.heat_api.bind.port }} check 
+  {% endfor %}
+
+listen heat_api_cfn_{{ global.openstack.service_port.heat_api_cfn }}
+  bind {{ haproxy.listen.heat_api_cfn.bind.address }}:{{ haproxy.listen.heat_api_cfn.bind.port }}
+  option httpchk GET {{ haproxy.listen.heat_api_cfn.http_check_get_url }}
+  default-server inter {{ haproxy.listen.heat_api_cfn.server.inter }} rise {{ haproxy.listen.heat_api_cfn.server.rise }} fall {{ haproxy.listen.heat_api_cfn.server.fall }}
+  {% for host in groups['openstack-heat'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.openstack.heat.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.heat_api_cfn.bind.port }} check 
+  {% endfor %}
+
+listen barbican_{{ global.openstack.service_port.barbican }}
+  bind {{ haproxy.listen.barbican.bind.address }}:{{ haproxy.listen.barbican.bind.port }}
+  option httpchk GET {{ haproxy.listen.barbican.http_check_get_url }}
+  default-server inter {{ haproxy.listen.barbican.server.inter }} rise {{ haproxy.listen.barbican.server.rise }} fall {{ haproxy.listen.barbican.server.fall }}
+  {% for host in groups['openstack-barbican'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.openstack.barbican.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.barbican.bind.port }} check
+  {% endfor %}
+
+listen horizon_{{ global.openstack.service_port.horizon }}
+  bind {{ haproxy.listen.horizon.bind.address }}:{{ haproxy.listen.horizon.bind.port }}
+  option httpchk GET {{ haproxy.listen.horizon.http_check_get_url }}
+  default-server inter {{ haproxy.listen.horizon.server.inter }} rise {{ haproxy.listen.horizon.server.rise }} fall {{ haproxy.listen.horizon.server.fall }}
+  {% for host in groups['openstack-horizon'] %}server {{ host }} {{ hostvars[host]['ansible_' + global.openstack.horizon.listen_interface]['ipv4']['address'] }}:{{ haproxy.listen.horizon.bind.port }} check
+  {% endfor %}
+

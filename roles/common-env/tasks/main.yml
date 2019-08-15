@@ -1,0 +1,17 @@
+---
+# tasks file for common-env
+
+- name: Remove Packages(PRM)
+  yum:
+    name: "{{ packages }}"
+    state: removed
+  vars:
+    packages: "{{ list_remove_packages }}"
+
+#- name: Yum Udate all Packages
+#  yum:
+#    name: '*'
+#    state: latest
+#    #disablerepo: "epel"
+#    skip_broken: yes
+

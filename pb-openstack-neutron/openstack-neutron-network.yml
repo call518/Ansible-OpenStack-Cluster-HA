@@ -1,0 +1,15 @@
+---
+- hosts:
+    - openstack-network
+  vars:
+  vars_files:
+    - "vars-global.yml"
+    - "vars-environment.yml"
+    - "vars-network-br-ex.yml"
+    - "vars-sysctl-openstack-neutron-network.yml"
+    - "vars-defautls-main.yml"
+  roles:
+    - network-br-ex
+    - { role: sysctl, tags: [ 'network' ] }
+    - openstack-neutron
+

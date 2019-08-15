@@ -1,0 +1,21 @@
+---
+- name: Install Chrony
+  yum:
+    name: "chrony"
+    state: installed
+
+- name: Config Chrony
+  template:
+    src: "chrony.conf.j2"
+    dest: "/etc/chrony.conf"
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  notify: Restart Chrony Service
+
+- name: Ensure Chrony Service is running
+  systemd:
+    name: chronyd
+    state: started
+    enabled: yes

@@ -1,0 +1,6 @@
+---
+# defaults file for common-env
+
+list_remove_packages:
+  - NetworkManager
+  - NetworkManager-libnm

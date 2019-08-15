@@ -1,0 +1,11 @@
+[uwsgi]
+socket = {{ barbican.vassals.api_ini.uwsgi.socket }}
+protocol = {{ barbican.vassals.api_ini.uwsgi.protocol }}
+processes = {{ barbican.vassals.api_ini.uwsgi.protocol }}
+lazy = {{ barbican.vassals.api_ini.uwsgi.lazy }}
+vacuum = {{ barbican.vassals.api_ini.uwsgi.vacuum }}
+no-default-app = {{ barbican.vassals.api_ini.uwsgi.no_default_app }}
+memory-report = {{ barbican.vassals.api_ini.uwsgi.memory_report }}
+plugins = {{ barbican.vassals.api_ini.uwsgi.plugins }}
+paste = {{ barbican.vassals.api_ini.uwsgi.paste }}
+add-header = {{ barbican.vassals.api_ini.uwsgi.add_header }}

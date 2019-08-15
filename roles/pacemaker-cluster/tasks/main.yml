@@ -1,0 +1,93 @@
+---
+# tasks file for pacemaker-cluster
+
+- name: Setup Network-HA-Cluster Yum Repo. - network:ha-clustering:Stable
+  template:
+    src: "network:ha-clustering:Stable.repo.j2"
+    dest: "/etc/yum.repos.d/network:ha-clustering:Stable.repo"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+
+- name: Install Pacemaker Packages
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - pacemaker
+      - corosync
+      - pcs
+      - crmsh
+      - psmisc
+      - policycoreutils-python
+      - fence-agents-all
+
+#########################################################
+
+- name: Set User Password - hacluster
+  user:
+    name: "{{ pacemaker.auth.user_id }}"
+    password: "{{ pacemaker.auth.user_pw | password_hash('sha512') }}"
+    #update_password: always
+
+- name: Ensure Pacemaker Service Running
+  systemd:
+    name: pcsd
+    state: started
+    enabled: yes
+
+- name: Auth Cluster
+  shell: |
+    pcs cluster auth {{ pacemaker.cluster.node_list }} -u {{ pacemaker.auth.user_id }} -p {{ pacemaker.auth.user_pw }} {% if pacemaker.auth.force %}--force{% endif %}
+  run_once: yes
+
+- name: Check Cluster Setup
+  shell: |
+    pcs cluster status
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_cluster_setup
+
+- name: Setup Cluster
+  shell: |
+    pcs cluster setup --name {{ pacemaker.cluster.name }} {{ pacemaker.cluster.node_list }} {% if pacemaker.setup.force %}--force{% endif %}
+  run_once: yes
+  when: check_cluster_setup.rc != 0
+
+- name: Start Cluster
+  shell: |
+    pcs cluster start --all
+  run_once: yes
+
+- name: Set Property to Cluster
+  shell: |
+    pcs property set \
+      pe-warn-series-max={{ pacemaker.property.pe_warn_series_max }} \
+      pe-input-series-max={{ pacemaker.property.pe_input_series_max }} \
+      pe-error-series-max={{ pacemaker.property.pe_error_series_max }} \
+      cluster-recheck-interval={{ pacemaker.property.cluster_recheck_interval }} \
+      stonith-enabled={{ pacemaker.property.stonith_enabled }}
+  run_once: yes
+
+- name: Check Resource - Virtual-IP
+  shell: |
+    pcs resource show {{ pacemaker.virtual_ip.resource_name }}
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_resource_virtual_ip
+
+- name: Set Virtual-IP
+  shell: |
+    pcs resource create {{ pacemaker.virtual_ip.resource_name }} ocf:heartbeat:IPaddr2 ip={{ pacemaker.virtual_ip.ip }} cidr_netmask={{ pacemaker.virtual_ip.cidr_netmask }} op monitor interval={{ pacemaker.virtual_ip.operation.interval }} on-fail={{ pacemaker.virtual_ip.operation.on_fail }}
+  run_once: yes
+  when: check_resource_virtual_ip.rc != 0
+
+- name: Set Constraint Prefers Location - Virtual-IP
+  shell: |
+    pcs constraint location {{ pacemaker.virtual_ip.resource_name }} prefers {{ pacemaker.virtual_ip.constraint.location.prefers }}
+  run_once: yes
+

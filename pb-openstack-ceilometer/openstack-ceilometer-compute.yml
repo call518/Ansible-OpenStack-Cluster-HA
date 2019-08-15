@@ -1,0 +1,10 @@
+---
+- hosts:
+    - openstack-compute
+  vars:
+  vars_files:
+    - "vars-global.yml"
+    - "vars-environment.yml"
+  roles:
+    - openstack-ceilometer
+

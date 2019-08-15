@@ -1,0 +1,54 @@
+# this is only for the mysqld standalone daemon
+[mysqld]
+server-id={{ galera_server_id }}
+bind-address={{ bind_address }}
+datadir={{ datadir }}
+
+## Slow log - queries slower than
+slow_query_log=1
+slow_query_log_file={{ mysql_log_slow_path }}
+long_query_time={{ mysql_long_query_time }}
+
+## Performance Schema
+#performance_schema=ON
+#performance-schema-instrument='stage/%=ON'
+#performance-schema-consumer-events-stages-current=ON
+#performance-schema-consumer-events-stages-history=ON
+#performance-schema-consumer-events-stages-history-long=ON
+
+#
+# * Galera-related settings
+#
+[galera]
+
+# Mandatory settings
+wsrep_provider=/usr/lib64/galera/libgalera_smm.so
+wsrep_cluster_address = "gcomm://{{ groups['galera-cluster'] | map('extract', hostvars, [galera_listen_interface_fact_var,'ipv4','address']) | list | join(',') }}"
+wsrep_provider_options="pc.recovery=TRUE;gcache.size=300M;gmcast.listen_addr=tcp://{{ wsrep_node_address }}:4567"
+wsrep_cluster_name={{ galera_wsrep_cluster_name }}
+wsrep_node_name={{ ansible_hostname }}
+wsrep_node_address={{ wsrep_node_address }}
+binlog_format=row
+default_storage_engine=InnoDB
+innodb_autoinc_lock_mode=2
+
+# SST settings
+wsrep_sst_method=xtrabackup-v2
+wsrep_sst_receive_address={{ wsrep_sst_receive_address }}
+wsrep_sst_auth={{ galera_sst_user }}:{{ galera_sst_pass }}
+# required since 10.1
+wsrep_on=ON
+
+# Optional setting
+#innodb_buffer_pool_size=200M
+innodb_buffer_pool_size=4096M
+#innodb_file_per_table=1
+innodb_flush_log_at_trx_commit=0
+max_allowed_packet=16M
+wsrep_slave_threads=16
+enforce_storage_engine=InnoDB
+max_binlog_size=100M
+max_connections=20480
+wsrep_max_ws_rows=131072
+wsrep_max_ws_size=1073741824
+wsrep_log_conflicts=1

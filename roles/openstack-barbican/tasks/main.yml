@@ -1,0 +1,179 @@
+---
+# tasks file for openstack-barbican
+
+- name: Create MySQL Database - barbican
+  mysql_db:
+    name: barbican
+    state: present
+  run_once: yes
+
+- name: Create MySQL User - barbican
+  mysql_user:
+    name: "{{ global.openstack.barbican.db_user }}"
+    password: "{{ global.openstack.barbican.db_pass }}"
+    host: "{{ item }}"
+    priv: 'barbican.*:ALL'
+    state: present
+  with_items:
+    - "localhost"
+    - "%"
+  run_once: yes
+
+#########################################################
+
+- name: Install Barbican Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openstack-barbican
+      - openstack-barbican-api
+      - openstack-barbican-worker
+      - openstack-barbican-common
+      - python-barbican
+      - python2-barbicanclient
+
+#########################################################
+
+- name: Check Exist Role - creator
+  shell: |
+    openstack role show creator
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_role_creator
+
+- name: Create Role - creator
+  shell: |
+    openstack role create creator
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_role_creator.rc != 0
+
+- name: Check Exist User - barbican
+  shell: |
+    openstack user show barbican
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_user_barbican
+
+- name: Create User - barbican
+  shell: |
+    openstack user create --domain {{ global.openstack.domain.default.id }} --password {{ global.openstack.barbican.service.pass }} barbican
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_user_barbican.rc != 0
+
+- name: Check Role-Assignment - barbican::*
+  shell: |
+    openstack role assignment list --user barbican --project {{ global.openstack.barbican.service.project }} --names -f value -c Role -c User
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_role_assignment_barbican
+
+- name: Assignment Role to User - barbican::amdin
+  shell: |
+    openstack role add --project {{ global.openstack.barbican.service.project }} --user barbican {{ global.openstack.barbican.service.role }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: '"admin barbican@" + global.openstack.domain.default.name not in check_role_assignment_barbican.stdout_lines'
+
+- name: Assignment Role to User - barbican::creator
+  shell: |
+    openstack role add --project {{ global.openstack.barbican.service.project }} --user barbican creator
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: '"creator barbican@" + global.openstack.domain.default.name not in check_role_assignment_barbican.stdout_lines'
+
+- name: Check Service - barbican
+  shell: |
+    openstack service show barbican -f value
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_service_barbican
+
+- name: Create Service - barbican
+  shell: |
+    openstack service create --name barbican --description "Key Manager" {{ global.openstack.barbican.service.type }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_service_barbican.rc != 0
+
+#########################################################
+
+- name: Check Exist EndPoint - barbican
+  shell: |
+    openstack endpoint list --service {{ item.service }} --interface {{ item.interface }} --region {{ item.region }} -f value -c 'Region' -c 'Service Name' -c 'Interface'
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  with_items: "{{ barbican.endpoint }}"
+  register: check_exist_endpoint
+
+- name: Create EndPoint - barbican
+  vars:
+    result_check_string: "{{ item.item.region }} {{ item.item.service }} {{ item.item.interface }}"
+  shell: |
+    openstack endpoint create --region {{ item.item.region }} {{ item.item.type }} {{ item.item.interface }} {{ item.item.url }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  with_items: "{{ check_exist_endpoint.results }}"
+  when: "result_check_string not in item.stdout_lines"
+
+#########################################################
+
+- name: Config Barbican - /etc/barbican/barbican.conf
+  template:
+    src: "barbican.conf.j2"
+    dest: "/etc/barbican/barbican.conf"
+    owner: root
+    group: barbican
+    mode: '0640'
+    backup: yes
+  notify: Restart Barbican Service
+
+#- name: Config Barbican - /etc/barbican/vassals/barbican-api.ini
+#  template:
+#    src: "barbican-api.ini.j2"
+#    dest: "/etc/barbican/vassals/barbican-api.ini"
+#    owner: root
+#    group: barbican
+#    mode: '0640'
+#    backup: yes
+#  notify: Restart Barbican Service
+
+- name: Config Barbican - /etc/barbican/gunicorn-config.py
+  template:
+    src: "gunicorn-config.py.j2"
+    dest: "/etc/barbican/gunicorn-config.py"
+    owner: root
+    group: barbican
+    mode: '0640'
+    backup: yes
+  notify: Restart Barbican Service
+
+- name: Create DB-Tables for Barbican
+  become: yes
+  become_user: barbican
+  shell: barbican-manage db upgrade
+  args:
+    executable: /bin/sh
+  run_once: yes
+
+- name: Ensure Barbican Service Running
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - openstack-barbican-api
+

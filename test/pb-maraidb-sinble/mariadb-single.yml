@@ -1,0 +1,30 @@
+---
+- hosts: mariadb-single
+  become: true
+  vars_files:
+    - "vars-sysctl-mariadb.yml"
+  vars:
+    mariadb_mirror: 'mariadb.mirror.nucleus.be/yum'
+    #mariadb_bind_address: '0.0.0.0'
+    #mariadb_root_password: '1234'
+#    mariadb_databases:
+#      - name: myappdb
+#        init_script: /etc/ansible/roles/role_under_test/docker-tests/init.sql
+#      - name: myotherdb
+#    mariadb_users:
+#      - name: appusr
+#        password: 'tesiKy3lj@'
+#        priv: "myappdb.*:ALL,GRANT"
+#        host: "%"
+#      - name: otheruser
+#        password: 'ir3.quTeg8'
+#        priv: "myotherdb.*:ALL"
+#        append_privs: 'yes'
+#    mariadb_custom_cnf:
+#      mysqld:
+#        general-log:
+#        general-log-file: queries.log
+#        log-output: file
+  roles:
+    - sysctl
+    - mariadb

@@ -1,0 +1,149 @@
+---
+# tasks file for openstack-aodh
+
+- name: Create MySQL Database - aodh
+  mysql_db:
+    name: aodh
+    state: present
+  run_once: yes
+
+- name: Create MySQL User - aodh
+  mysql_user:
+    name: "{{ global.openstack.aodh.db_user }}"
+    password: "{{ global.openstack.aodh.db_pass }}"
+    host: "{{ item }}"
+    priv: 'aodh.*:ALL'
+    state: present
+  with_items:
+    - "localhost"
+    - "%"
+  run_once: yes
+
+#########################################################
+
+- name: Install Aodh Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openstack-aodh-api
+      - openstack-aodh-evaluator
+      - openstack-aodh-notifier
+      - openstack-aodh-listener
+      - openstack-aodh-expirer
+      - python-aodhclient
+
+#########################################################
+
+- name: Check Exist User - aodh
+  shell: |
+    openstack user show aodh
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_user_aodh
+
+- name: Create User - aodh
+  shell: |
+    openstack user create --domain {{ global.openstack.domain.default.id }} --password {{ global.openstack.aodh.service.pass }} aodh
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_user_aodh.rc != 0
+
+- name: Check Role-Assignment - aodh
+  shell: |
+    openstack role assignment list --user aodh --project {{ global.openstack.aodh.service.project }} --names -f value -c User
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_role_assignment_aodh
+
+- name: Assignment Role to User - aodh
+  shell: |
+    openstack role add --project {{ global.openstack.aodh.service.project }} --user aodh {{ global.openstack.aodh.service.role }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: '"aodh@" + global.openstack.domain.default.name not in check_role_assignment_aodh.stdout_lines'
+
+- name: Check Service - aodh
+  shell: |
+    openstack service show aodh -f value
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_service_aodh
+
+- name: Create Service - aodh
+  shell: |
+    openstack service create --name aodh --description "Telemetry" {{ global.openstack.aodh.service.type }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_service_aodh.rc != 0
+
+#########################################################
+
+- name: Check Exist EndPoint - aodh
+  shell: |
+    openstack endpoint list --service {{ item.service }} --interface {{ item.interface }} --region {{ item.region }} -f value -c 'Region' -c 'Service Name' -c 'Interface'
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  with_items: "{{ aodh.endpoint }}"
+  register: check_exist_endpoint
+
+- name: Create EndPoint - aodh
+  vars:
+    result_check_string: "{{ item.item.region }} {{ item.item.service }} {{ item.item.interface }}"
+  shell: |
+    openstack endpoint create --region {{ item.item.region }} {{ item.item.type }} {{ item.item.interface }} {{ item.item.url }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  with_items: "{{ check_exist_endpoint.results }}"
+  when: "result_check_string not in item.stdout_lines"
+
+#########################################################
+
+- name: Config Aodh - /etc/aodh/aodh.conf
+  template:
+    src: "aodh.conf.j2"
+    dest: "/etc/aodh/aodh.conf"
+    owner: root
+    group: aodh
+    mode: '0640'
+    backup: yes
+  notify: Restart Aodh Service
+
+- name: Config Aodh - /usr/bin/aodh-api
+  template:
+    src: "aodh-api.j2"
+    dest: "/usr/bin/aodh-api"
+    owner: root
+    group: root
+    mode: '0755'
+    backup: yes
+  notify: Restart Aodh Service
+
+- name: Create DB-Tables for Aodh
+  become: yes
+  become_user: aodh
+  shell: aodh-dbsync
+  args:
+    executable: /bin/sh
+  run_once: yes
+
+- name: Ensure Aodh Service Running
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - openstack-aodh-api
+    - openstack-aodh-evaluator
+    - openstack-aodh-notifier
+    - openstack-aodh-listener
+

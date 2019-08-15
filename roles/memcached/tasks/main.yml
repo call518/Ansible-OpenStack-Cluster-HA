@@ -1,0 +1,21 @@
+---
+- name: Install Memcached
+  yum:
+    name: "memcached"
+    state: installed
+
+- name: Config Memcached
+  template:
+    src: "memcached.j2"
+    dest: "/etc/sysconfig/memcached"
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+  notify: Restart Memcached Service
+
+- name: Ensure Memcached Service is running
+  systemd:
+    name: memcached
+    state: started
+    enabled: yes

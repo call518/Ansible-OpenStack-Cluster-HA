@@ -1,0 +1,8 @@
+---
+- hosts: galera-cluster
+  serial: 49%
+  #serial: 1
+  vars_files:
+    - "vars-global.yml"
+  roles:
+    - { role: galera_conf, bootstrapped: yes, tags: [ 'config' ] }

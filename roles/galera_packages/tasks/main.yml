@@ -1,0 +1,58 @@
+---
+- name: Set ulimit - nofile
+  pam_limits:
+    domain: "*"
+    limit_type: "{{ item }}"
+    limit_item: "nofile"
+    value: "{{ global.galera.ulimit.nofile }}"
+    backup: yes
+    comment: "by Galera"
+  with_items:
+    - "soft"
+    - "hard"
+
+- name: Set ulimit - nproc
+  pam_limits:
+    domain: "*"
+    limit_type: "{{ item }}"
+    limit_item: "nproc"
+    value: "{{ global.galera.ulimit.nproc }}"
+    backup: yes
+    comment: "by Galera"
+  with_items:
+    - "soft"
+    - "hard"
+
+#########################################################
+
+- name: Install MariaDB server packages
+  yum: name={{ item }} state=present
+  with_items:
+    - MariaDB-client
+    - MariaDB-server
+    - galera
+
+- name: Install percona-xtrabackup packages
+  yum: name={{ item }} state=present
+  with_items:
+    - percona-xtrabackup
+    - socat
+  when: "mariadb_release | version_compare('10.2', '<')"
+
+- name: Install percona-xtrabackup-24 packages
+  yum: name={{ item }} state=present
+  with_items:
+    - percona-xtrabackup-24
+    - socat
+  when: "mariadb_release | version_compare('10.2', '>=')"
+
+- name: Install MySQL-python
+  yum: name=MySQL-python state=present
+
+- name: Create Log Directory - /var/log/mysql
+  file:
+    path: "/var/log/mysql"
+    state: directory
+    owner: mysql
+    group: mysql
+    mode: '0755'

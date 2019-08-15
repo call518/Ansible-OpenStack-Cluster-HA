@@ -1,0 +1,250 @@
+---
+# tasks file for openstack-gnocchi
+
+- name: Create MySQL Database - gnocchi
+  mysql_db:
+    name: gnocchi
+    state: present
+  run_once: yes
+
+- name: Create MySQL User - gnocchi
+  mysql_user:
+    name: "{{ global.openstack.gnocchi.db_user }}"
+    password: "{{ global.openstack.gnocchi.db_pass }}"
+    host: "{{ item }}"
+    priv: 'gnocchi.*:ALL'
+    state: present
+  with_items:
+    - "localhost"
+    - "%"
+  run_once: yes
+
+#########################################################
+
+- name: Install Gnocchi Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - gnocchi-common
+      - openstack-gnocchi-api
+      - openstack-gnocchi-metricd
+      - python2-gnocchiclient
+      - gcc
+      - python-devel
+      - python-pip
+
+#########################################################
+
+- name: Check Exist User - gnocchi
+  shell: |
+    openstack user show gnocchi
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_user_gnocchi
+
+- name: Create User - gnocchi
+  shell: |
+    openstack user create --domain {{ global.openstack.domain.default.id }} --password {{ global.openstack.gnocchi.service.pass }} gnocchi
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_user_gnocchi.rc != 0
+
+- name: Check Role-Assignment - gnocchi
+  shell: |
+    openstack role assignment list --user gnocchi --project {{ global.openstack.gnocchi.service.project }} --names -f value -c User
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_role_assignment_gnocchi
+
+- name: Assignment Role to User - gnocchi
+  shell: |
+    openstack role add --project {{ global.openstack.gnocchi.service.project }} --user gnocchi {{ global.openstack.gnocchi.service.role }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: '"gnocchi@" + global.openstack.domain.default.name not in check_role_assignment_gnocchi.stdout_lines'
+
+- name: Check Service - gnocchi
+  shell: |
+    openstack service show gnocchi -f value
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_service_gnocchi
+
+- name: Create Service - gnocchi
+  shell: |
+    openstack service create --name gnocchi --description "Metric Service" {{ global.openstack.gnocchi.service.type }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_service_gnocchi.rc != 0
+
+#########################################################
+
+- name: Check Exist EndPoint - gnocchi
+  shell: |
+    openstack endpoint list --service {{ item.service }} --interface {{ item.interface }} --region {{ item.region }} -f value -c 'Region' -c 'Service Name' -c 'Interface'
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  with_items: "{{ gnocchi.endpoint }}"
+  register: check_exist_endpoint
+
+- name: Create EndPoint - gnocchi
+  vars:
+    result_check_string: "{{ item.item.region }} {{ item.item.service }} {{ item.item.interface }}"
+  shell: |
+    openstack endpoint create --region {{ item.item.region }} {{ item.item.type }} {{ item.item.interface }} {{ item.item.url }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  with_items: "{{ check_exist_endpoint.results }}"
+  when: "result_check_string not in item.stdout_lines"
+
+#########################################################
+
+- name: Config Gnocchi - /etc/gnocchi/gnocchi.conf
+  template:
+    src: "gnocchi.conf.j2"
+    dest: "/etc/gnocchi/gnocchi.conf"
+    owner: root
+    group: gnocchi
+    mode: '0640'
+    backup: yes
+  #notify: Restart Gnocchi Service
+
+#########################################################
+
+- name: Config CEPH - /etc/ceph/ceph-gnocchi.conf
+  template:
+    src: "ceph-gnocchi.conf.j2"
+    dest: "/etc/ceph/ceph-gnocchi.conf"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+
+- name: Config CEPH Keyring - gnocchi
+  template:
+    src: "ceph.client.gnocchi.keyring.j2"
+    dest: "/etc/ceph/ceph.client.gnocchi.keyring"
+    owner: root
+    group: gnocchi
+    mode: '0640'
+    backup: yes
+  when: global.ceph.admin_privilges == True
+
+- name: Create DB-Tables for Gnocchi
+  become: yes
+  become_user: gnocchi
+  shell: gnocchi-upgrade
+  args:
+    executable: /bin/sh
+  run_once: yes
+
+#########################################################
+
+#- name: Bugfix Gnocchi-API Systemd Script - /usr/lib/systemd/system/openstack-gnocchi-api.service
+#  shell: |
+#    sed -i 's/ -- --/ --/g' /usr/lib/systemd/system/openstack-gnocchi-api.service
+#    systemctl daemon-reload
+
+- name: Install uWSGI /w Python Pip
+  pip:
+    name: "uwsgi=={{ gnocchi.uwsgi.version }}"
+
+#########################################################
+
+- name: Ensure Gnocchi Service Running
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - openstack-gnocchi-api
+    - openstack-gnocchi-metricd
+
+#########################################################
+
+#- name: Check Exist Gnocchi Archive-Policy - custom-mean
+#  shell: |
+#    gnocchi archive-policy show custom-mean
+#  environment: "{{ env.openstack.admin_openrc }}"
+#  changed_when: false
+#  failed_when: no
+#  run_once: yes
+#  register: check_gnocchi_archive_polocy_custom_mean
+#
+#- name: Create Gnocchi Archive-Policy - custom-mean
+#  vars:
+#    archive_policy_definition: "{% for definition in gnocchi.archive_policy.custom_mean.definition %} --definition 'granularity:{{ definition.granularity }},timespan:{{ definition.timespan }}'{% endfor %}"
+#  shell: gnocchi archive-policy create custom-mean --aggregation-method {{ gnocchi.archive_policy.custom_mean.aggregation_method }} {{ archive_policy_definition }}
+#  environment: "{{ env.openstack.admin_openrc }}"
+#  run_once: yes
+#  when: check_gnocchi_archive_polocy_custom_mean.rc != 0
+#
+#- name: Check Exist Gnocchi Archive-Policy - custom-sum
+#  shell: |
+#    gnocchi archive-policy show custom-sum
+#  environment: "{{ env.openstack.admin_openrc }}"
+#  changed_when: false
+#  failed_when: no
+#  run_once: yes
+#  register: check_gnocchi_archive_polocy_custom_sum
+#
+#- name: Create Gnocchi Archive-Policy - custom-sum
+#  vars:
+#    archive_policy_definition: "{% for definition in gnocchi.archive_policy.custom_sum.definition %} --definition 'granularity:{{ definition.granularity }},timespan:{{ definition.timespan }}'{% endfor %}"
+#  shell: gnocchi archive-policy create custom-sum --aggregation-method {{ gnocchi.archive_policy.custom_sum.aggregation_method }} {{ archive_policy_definition }}
+#  environment: "{{ env.openstack.admin_openrc }}"
+#  run_once: yes
+#  when: check_gnocchi_archive_polocy_custom_sum.rc != 0
+
+#  archive_policy:
+#    - { name: "custom_mean", aggregation_method: "mean", definition: { granularity: "300s", timespan: "365d" } }
+#    - { name: "custom_sum", aggregation_method: "sum", definition: { granularity: "300s", timespan: "365d" } }
+
+- name: Check Exist Gnocchi Archive-Policy - Custom
+  shell: |
+    gnocchi archive-policy show {{ item.name }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  with_items: "{{ gnocchi.archive_policy }}"
+  register: check_gnocchi_archive_polocy_custom
+
+#- debug: var=check_gnocchi_archive_polocy_custom.results
+
+- name: Create Gnocchi Archive-Policy - Custom
+  vars:
+    archive_policy_definition: "{% for definition in item.item.definition %} --definition \'granularity:{{ definition | json_query('granularity') }},timespan:{{ definition | json_query('timespan') }}\'{% endfor %}"
+  shell: gnocchi archive-policy create {{ item.item.name }} --aggregation-method {{ item.item.aggregation_method }} {{ archive_policy_definition }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  with_items: "{{ check_gnocchi_archive_polocy_custom.results }}"
+  when: item.rc != 0
+
+- name: Check Exist Gnocchi Archive-Policy-Rule - custom
+  shell: |
+    gnocchi archive-policy-rule show {{ item.name }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  with_items: "{{ gnocchi.archive_policy_rule }}"
+  register: check_gnocchi_archive_polocy_rule_custom
+
+- name: Create Gnocchi Archive-Policy-Rule - custom
+  shell: gnocchi archive-policy-rule create {{ item.item.name }} --metric-pattern {{ item.item.metric_pattern }} --archive-policy-name {{ item.item.archive_policy_name }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  with_items: "{{ check_gnocchi_archive_polocy_rule_custom.results }}"
+  when: item.rc != 0
+

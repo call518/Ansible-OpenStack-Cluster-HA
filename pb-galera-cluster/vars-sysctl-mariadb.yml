@@ -1,0 +1,11 @@
+sysctl_file: "/etc/sysctl.d/50-mariadb.conf"
+sysctl_config:
+  - token: "fs.nr_open"
+    value: "{{ global.galera.sysctl.fs_nr_open }}"
+    comment: "for MariaDB"
+  - token: "fs.file-max"
+    value: "{{ global.galera.sysctl.fs_file_max }}"
+    comment: "for MariaDB"
+  - token: "vm.swappiness"
+    value: "{{ global.galera.sysctl.vm_swappiness }}"
+    comment: "for MariaDB"

@@ -1,0 +1,82 @@
+---
+# defaults file for openstack-barbican
+
+barbican:
+  endpoint:
+    - { region: "{{ global.openstack.barbican.service.region }}", type: "{{ global.openstack.barbican.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.barbican }}", interface: "admin", service: "{{ global.openstack.barbican.service.name }}" }
+    - { region: "{{ global.openstack.barbican.service.region }}", type: "{{ global.openstack.barbican.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.barbican }}", interface: "internal", service: "{{ global.openstack.barbican.service.name }}" }
+    - { region: "{{ global.openstack.barbican.service.region }}", type: "{{ global.openstack.barbican.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.barbican }}", interface: "public", service: "{{ global.openstack.barbican.service.name }}" }
+  conf:
+    default:
+      log_dir: "/var/log/barbican"
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      host_href: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.barbican }}"
+      sql_connection: "mysql+pymysql://{{ global.openstack.barbican.db_user }}:{{ global.openstack.barbican.db_pass }}@{{ global.haproxy.fqdn }}/barbican"
+    certificate:
+    certificate_event:
+    cors:
+    crypto:
+      namespace: "barbican.crypto.plugin"
+      enabled_crypto_plugins: "simple_crypto"
+    dogtag_plugin:
+    keystone_authtoken:
+      www_authenticate_uri: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}"
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}"
+      memcached_servers: "{% for host in groups['memcached'] %}{{ host }}:{{ global.memcached.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      auth_type: password
+      project_domain_name: "{{ global.openstack.domain.default.name }}"
+      user_domain_name: "{{ global.openstack.domain.default.name }}"
+      project_name: "{{ global.openstack.barbican.service.project }}"
+      username: barbican
+      password: "{{ global.openstack.barbican.service.pass }}"
+      service_token_roles_required: true
+    keystone_notifications:
+    kmip_plugin:
+    matchmaker_redis:
+    oslo_messaging_amqp:
+    oslo_messaging_kafka:
+    oslo_messaging_notifications:
+      driver: messagingv2
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+    oslo_messaging_rabbit:
+    oslo_messaging_zmq:
+    oslo_middleware:
+    oslo_policy:
+      policy_file: "/etc/barbican/policy.json"
+      policy_default_rule: default
+    p11_crypto_plugin:
+    queue:
+    quotas:
+    retry_scheduler:
+    secretstore:
+      namespace: "barbican.secretstore.plugin"
+      enabled_secretstore_plugins: store_crypto
+    simple_crypto_plugin:
+      kek: "{{ global.openstack.barbican.simple_crypto_plugin.key }}"
+    snakeoil_ca_plugin:
+    ssl:
+
+  vassals:
+    api_ini:
+      uwsgi:
+        socket: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.cinder.listen_interface)].ipv4.address }}:{{ global.openstack.service_port.barbican }}"
+        protocol: http
+        processes: 1
+        lazy: true
+        vacuum: true
+        no_default_app: true
+        memory_report: true
+        plugins: python
+        paste: "config:/etc/barbican/barbican-api-paste.ini"
+        add_header: "Connection: close"
+  gunicorn_config_py:
+    bind: "'{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.barbican.listen_interface)].ipv4.address }}:{{ global.openstack.service_port.barbican }}'"
+    user: "'barbican'"
+    group: "'barbican'"
+    timeout: 30
+    backlog: 2048
+    keepalive: 2
+    workers: "multiprocessing.cpu_count() * 2"
+    loglevel: "'info'"
+    errorlog: "'-'"
+    accesslog: "'-'"

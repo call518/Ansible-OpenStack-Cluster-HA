@@ -1,0 +1,6 @@
+memcached_interface_address: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.memcached.interface)].ipv4.address }}"
+
+memcached_user: memcached
+memcached_maxconn: 1024
+memcached_cachesize: 64
+memcached_options: "-l {{ memcached_interface_address }},localhost,::1"

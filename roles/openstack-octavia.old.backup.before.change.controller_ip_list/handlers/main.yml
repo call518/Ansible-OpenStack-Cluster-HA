@@ -1,0 +1,17 @@
+---
+# handlers file for openstack-octavia
+
+- name: Restart Octavia Service - Controller
+  systemd:
+    name: octavia-api
+    state: restarted
+
+- name: Restart Octavia Service - Network
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - octavia-worker
+    - octavia-health-manager
+    - octavia-housekeeping
+

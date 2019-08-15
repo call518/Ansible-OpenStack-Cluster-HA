@@ -1,0 +1,43 @@
+[DEFAULT]
+log_dir = {{ gnocchi.conf.default.log_dir }}
+transport_url = {{ gnocchi.conf.default.transport_url }}
+coordination_url = {{ gnocchi.conf.default.coordination_url }}
+[api]
+auth_mode = {{ gnocchi.conf.api.auth_mode }}
+max_limit = {{ gnocchi.conf.api.max_limit }}
+operation_timeout = {{ gnocchi.conf.api.operation_timeout }}
+host = {{ gnocchi.conf.api.host }}
+port = {{ gnocchi.conf.api.port }}
+uwsgi_mode = {{ gnocchi.conf.api.uwsgi_mode }}
+[archive_policy]
+default_aggregation_methods = {{ gnocchi.conf.archive_policy.default_aggregation_methods }}
+[database]
+backend = {{ gnocchi.conf.database.backend }}
+[indexer]
+url = {{ gnocchi.conf.indexer.url }}
+[keystone_authtoken]
+www_authenticate_uri = {{ gnocchi.conf.keystone_authtoken.www_authenticate_uri }}
+auth_url = {{ gnocchi.conf.keystone_authtoken.auth_url }}
+memcached_servers = {{ gnocchi.conf.keystone_authtoken.memcached_servers }}
+auth_type = {{ gnocchi.conf.keystone_authtoken.auth_type }}
+project_domain_name = {{ gnocchi.conf.keystone_authtoken.project_domain_name }}
+user_domain_name = {{ gnocchi.conf.keystone_authtoken.user_domain_name }}
+project_name = {{ gnocchi.conf.keystone_authtoken.project_name }}
+username = {{ gnocchi.conf.keystone_authtoken.username }}
+password = {{ gnocchi.conf.keystone_authtoken.password }}
+interface = {{ gnocchi.conf.keystone_authtoken.interface }}
+region_name = {{ gnocchi.conf.keystone_authtoken.region_name }}
+[metricd]
+workers = {{ gnocchi.conf.metricd.workers }}
+metric_processing_delay = {{ gnocchi.conf.metricd.metric_processing_delay }}
+[storage]
+{% if global.openstack.gnocchi.storage_type == 'file' %}
+driver = {{ gnocchi.conf.storage.file.driver }}
+file_basepath = {{ gnocchi.conf.storage.file.file_basepath }}
+{% elif global.openstack.gnocchi.storage_type == 'ceph' %}
+driver = {{ gnocchi.conf.storage.ceph.driver }}
+ceph_pool = {{ gnocchi.conf.storage.ceph.ceph_pool }}
+ceph_username = {{ gnocchi.conf.storage.ceph.ceph_username }}
+ceph_keyring = {{ gnocchi.conf.storage.ceph.ceph_keyring }}
+ceph_conffile = {{ gnocchi.conf.storage.ceph.ceph_conffile }}
+{% endif %}

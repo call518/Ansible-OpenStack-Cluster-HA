@@ -1,0 +1,9 @@
+export OS_PROJECT_DOMAIN_NAME={{ global.openstack.domain.default.name }}
+export OS_USER_DOMAIN_NAME={{ global.openstack.domain.default.name }}
+export OS_PROJECT_NAME={{ global.openstack.keystone.service.project }}
+export OS_USERNAME={{ global.openstack.keystone.service.user }}
+export OS_PASSWORD={{ global.openstack.keystone.service.pass }}
+export OS_AUTH_URL=http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}
+export OS_IDENTITY_API_VERSION={{ global.openstack.keystone.api.version }}
+export OS_IMAGE_API_VERSION={{ global.openstack.glance.api.version }}
+export OS_AUTH_TYPE=password

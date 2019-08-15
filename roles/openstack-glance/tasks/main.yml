@@ -1,0 +1,204 @@
+---
+# tasks file for openstack-glance
+
+- name: Create MySQL Database - glance
+  mysql_db:
+    name: glance
+    state: present
+  run_once: yes
+
+- name: Create MySQL User - glance
+  mysql_user:
+    name: "{{ global.openstack.glance.db_user }}"
+    password: "{{ global.openstack.glance.db_pass }}"
+    host: "{{ item }}"
+    priv: 'glance.*:ALL'
+    state: present
+  with_items:
+    - "localhost"
+    - "%"
+  run_once: yes
+
+#########################################################
+
+- name: Install Glance Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openstack-glance
+
+#########################################################
+
+- name: Config CEPH Keyring - glance
+  template:
+    src: "ceph.client.glance.keyring.j2"
+    dest: "/etc/ceph/ceph.client.glance.keyring"
+    owner: glance
+    group: glance
+    mode: '0644'
+    backup: yes
+
+#########################################################
+
+- name: Check Exist User - glance
+  shell: |
+    openstack user show glance
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_user_glance
+
+- name: Create User - glance
+  shell: |
+    openstack user create --domain {{ global.openstack.domain.default.id }} --password {{ global.openstack.glance.service.pass }} glance
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_user_glance.rc != 0
+
+- name: Check Role-Assignment - glance
+  shell: |
+    openstack role assignment list --user glance --project {{ global.openstack.glance.service.project }} --names -f value -c User
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_role_assignment_glance
+
+- name: Assignment Role to User - glance
+  shell: |
+    openstack role add --project {{ global.openstack.glance.service.project }} --user glance {{ global.openstack.glance.service.role }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: '"glance@" + global.openstack.domain.default.name not in check_role_assignment_glance.stdout_lines'
+
+- name: Check Service - glance
+  shell: |
+    openstack service show glance -f value
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_service_glance
+
+- name: Create Service - glance
+  shell: |
+    openstack service create --name glance --description "OpenStack Image" {{ global.openstack.glance.service.type }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_service_glance.rc != 0
+
+#########################################################
+
+- name: Check Exist EndPoint - glance
+  shell: |
+    openstack endpoint list --service {{ item.service }} --interface {{ item.interface }} --region {{ item.region }} -f value -c 'Region' -c 'Service Name' -c 'Interface'
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  with_items: "{{ glance.endpoint }}"
+  register: check_exist_endpoint
+
+- name: Create EndPoint - glance
+  vars:
+    result_check_string: "{{ item.item.region }} {{ item.item.service }} {{ item.item.interface }}"
+  shell: |
+    openstack endpoint create --region {{ item.item.region }} {{ item.item.type }} {{ item.item.interface }} {{ item.item.url }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  with_items: "{{ check_exist_endpoint.results }}"
+  when: "result_check_string not in item.stdout_lines"
+
+#########################################################
+
+- name: Config Glance-Registry - /etc/glance/glance-registry.conf
+  template:
+    src: "glance-registry.conf.j2"
+    dest: "/etc/glance/glance-registry.conf"
+    owner: root
+    group: glance
+    mode: '0640'
+    backup: yes
+  notify: Restart Glance-Registry Service
+
+- name: Setup /etc/glance/glance-registry-paste.ini
+  file:
+    src: "/usr/share/glance/glance-registry-dist-paste.ini"
+    dest: "/etc/glance/glance-registry-paste.ini"
+    owner: root
+    group: glance
+    mode: '0640'
+    state: link
+  notify: Restart Glance-Registry Service
+
+- name: Ensure Glance-Registry Service Running
+  systemd:
+    name: openstack-glance-registry
+    state: started
+    enabled: yes
+
+#########################################################
+
+- name: Config Glance-API - /etc/glance/glance-api.conf
+  template:
+    src: "glance-api.conf.j2"
+    dest: "/etc/glance/glance-api.conf"
+    owner: root
+    group: glance
+    mode: '0640'
+    backup: yes
+  notify: Restart Glance-API Service
+
+- name: Setup /etc/glance/glance-api-paste.ini
+  file:
+    src: "/usr/share/glance/glance-api-dist-paste.ini"
+    dest: "/etc/glance/glance-api-paste.ini"
+    owner: root
+    group: glance
+    mode: '0640'
+    state: link
+  notify: Restart Glance-API Service
+
+- name: Create DB-Tables for Glance
+  become: yes
+  become_user: glance
+  shell: glance-manage db_sync
+  args:
+    executable: /bin/sh
+  run_once: yes
+
+- name: Ensure Glance-API Service Running
+  systemd:
+    name: openstack-glance-api
+    state: started
+    enabled: yes
+
+#########################################################
+
+- name: Download CirrOS Test Image
+  get_url:
+    url: "{{ glance.test_image.download_url }}"
+    dest: "/tmp/{{ glance.test_image.file_name }}"
+    checksum: sha256:0596039112d708c7792eda71e532b28f558ff52cf496ec6aedf1afbea6075a4e
+  run_once: yes
+
+- name: Check Exist Cirros Test Image
+  shell: |
+    openstack image list --public --name {{ glance.test_image.file_name }} -f value -c Name -c Status
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_test_image
+
+- name: Register Cirros Test Image
+  shell: |
+    openstack image create "{{ glance.test_image.file_name }}" --file /tmp/{{ glance.test_image.file_name }} --disk-format qcow2 --container-format bare --public
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  #when: 'check_endpoint_glance_admin.stdout != glance.test_image.file_name'
+  when: 'glance.test_image.file_name + " active" not in check_test_image.stdout_lines'
+

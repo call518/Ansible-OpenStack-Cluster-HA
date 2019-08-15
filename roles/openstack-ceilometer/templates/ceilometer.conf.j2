@@ -1,0 +1,67 @@
+[DEFAULT]
+log_dir = {{ ceilometer.conf.default.log_dir }}
+transport_url = {{ ceilometer.conf.default.transport_url }}
+meter_dispatchers = {{ ceilometer.conf.default.meter_dispatchers }}
+event_dispatchers = {{ ceilometer.conf.default.event_dispatchers }}
+instance_usage_audit = {{ ceilometer.conf.default.instance_usage_audit }}
+instance_usage_audit_period = {{ ceilometer.conf.default.instance_usage_audit_period }}
+notify_on_state_change = {{ ceilometer.conf.default.notify_on_state_change }}
+[api]
+[collector]
+[compute]
+[coordination]
+[cors]
+[cors.subdomain]
+[database]
+[dispatcher_file]
+[dispatcher_gnocchi]
+filter_service_activity = {{ ceilometer.conf.dispatcher_gnocchi.filter_service_activity }}
+archive_policy = {{ ceilometer.conf.dispatcher_gnocchi.archive_policy }}
+[dispatcher_http]
+[event]
+[hardware]
+[ipmi]
+[keystone_authtoken]
+www_authenticate_uri = {{ ceilometer.conf.keystone_authtoken.www_authenticate_uri }}
+auth_url = {{ ceilometer.conf.keystone_authtoken.auth_url }}
+memcached_servers = {{ ceilometer.conf.keystone_authtoken.memcached_servers }}
+auth_type = {{ ceilometer.conf.keystone_authtoken.auth_type }}
+project_domain_name = {{ ceilometer.conf.keystone_authtoken.project_domain_name }}
+user_domain_name = {{ ceilometer.conf.keystone_authtoken.user_domain_name }}
+project_name = {{ ceilometer.conf.keystone_authtoken.project_name }}
+username = {{ ceilometer.conf.keystone_authtoken.username }}
+password = {{ ceilometer.conf.keystone_authtoken.password }}
+interface = {{ ceilometer.conf.keystone_authtoken.interface }}
+region_name = {{ ceilometer.conf.keystone_authtoken.region_name }}
+[matchmaker_redis]
+[meter]
+[notification]
+[oslo_concurrency]
+[oslo_messaging_amqp]
+[oslo_messaging_kafka]
+[oslo_messaging_notifications]
+driver = {{ ceilometer.conf.oslo_messaging_notifications.driver }}
+transport_url = {{ ceilometer.conf.oslo_messaging_notifications.transport_url }}
+[oslo_messaging_rabbit]
+[oslo_messaging_zmq]
+[oslo_middleware]
+[oslo_policy]
+[polling]
+[publisher]
+[publisher_notifier]
+[rgw_admin_credentials]
+[service_credentials]
+auth_url = {{ ceilometer.conf.service_credentials.auth_url }}
+memcached_servers = {{ ceilometer.conf.service_credentials.memcached_servers }}
+auth_type = {{ ceilometer.conf.service_credentials.auth_type }}
+project_domain_name = {{ ceilometer.conf.service_credentials.project_domain_name }}
+user_domain_name = {{ ceilometer.conf.service_credentials.user_domain_name }}
+project_name = {{ ceilometer.conf.service_credentials.project_name }}
+username = {{ ceilometer.conf.service_credentials.username }}
+password = {{ ceilometer.conf.service_credentials.password }}
+interface = {{ ceilometer.conf.service_credentials.interface }}
+region_name = {{ ceilometer.conf.service_credentials.region_name }}
+[service_types]
+[storage]
+[vmware]
+[xenapi]

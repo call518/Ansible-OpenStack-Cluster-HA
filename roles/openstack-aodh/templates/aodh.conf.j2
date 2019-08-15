@@ -1,0 +1,46 @@
+[DEFAULT]
+log_dir = {{ aodh.conf.default.log_dir }}
+transport_url = {{ aodh.conf.default.transport_url }}
+auth_strategy = {{ aodh.conf.default.auth_strategy }}
+[api]
+auth_mode = {{ aodh.conf.api.auth_mode }}
+gnocchi_external_project_owner = {{ aodh.conf.api.gnocchi_external_project_owner }}
+gnocchi_external_domain_name = {{ aodh.conf.api.gnocchi_external_domain_name }}
+[coordination]
+[cors]
+[cors.subdomain]
+[database]
+connection = {{ aodh.conf.database.connection }}
+[evaluator]
+[keystone_authtoken]
+www_authenticate_uri = {{ aodh.conf.keystone_authtoken.www_authenticate_uri }}
+auth_url = {{ aodh.conf.keystone_authtoken.auth_url }}
+memcached_servers = {{ aodh.conf.keystone_authtoken.memcached_servers }}
+auth_type = {{ aodh.conf.keystone_authtoken.auth_type }}
+project_domain_name = {{ aodh.conf.keystone_authtoken.project_domain_name }}
+user_domain_name = {{ aodh.conf.keystone_authtoken.user_domain_name }}
+project_name = {{ aodh.conf.keystone_authtoken.project_name }}
+username = {{ aodh.conf.keystone_authtoken.username }}
+password = {{ aodh.conf.keystone_authtoken.password }}
+[listener]
+[matchmaker_redis]
+[notifier]
+[oslo_messaging_amqp]
+[oslo_messaging_notifications]
+driver = {{ aodh.conf.oslo_messaging_notifications.driver }}
+transport_url = {{ aodh.conf.oslo_messaging_notifications.transport_url }}
+[oslo_messaging_rabbit]
+[oslo_messaging_zmq]
+[oslo_middleware]
+[oslo_policy]
+[service_credentials]
+auth_type = {{ aodh.conf.service_credentials.auth_type }}
+auth_url = {{ aodh.conf.service_credentials.auth_url }}
+project_domain_id = {{ aodh.conf.service_credentials.project_domain_id }}
+user_domain_id = {{ aodh.conf.service_credentials.user_domain_id }}
+project_name = {{ aodh.conf.service_credentials.project_name }}
+username = {{ aodh.conf.service_credentials.username }}
+password = {{ aodh.conf.service_credentials.password }}
+interface = {{ aodh.conf.service_credentials.interface }}
+region_name = {{ aodh.conf.service_credentials.region_name }}
+[service_types]

@@ -1,0 +1,100 @@
+---
+# defaults file for openstack-glance
+
+glance:
+  test_image:
+    download_url: "http://download.cirros-cloud.net/0.4.0/cirros-0.4.0-i386-disk.img"
+    file_name: "cirros-0.4.0-i386-disk.img"
+  endpoint:
+    - { region: "{{ global.openstack.glance.service.region }}", type: "{{ global.openstack.glance.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.glance.api }}", interface: "admin", service: "{{ global.openstack.glance.service.name }}" }
+    - { region: "{{ global.openstack.glance.service.region }}", type: "{{ global.openstack.glance.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.glance.api }}", interface: "internal", service: "{{ global.openstack.glance.service.name }}" }
+    - { region: "{{ global.openstack.glance.service.region }}", type: "{{ global.openstack.glance.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.glance.api }}", interface: "public", service: "{{ global.openstack.glance.service.name }}" }
+  conf: 
+    registry:
+      default:
+        log_dir: /var/log/glance
+        bind_host: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.glance.listen_interface)].ipv4.address }}"
+        transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+        http_keepalive: True
+      database:
+        connection: "mysql+pymysql://{{ global.openstack.glance.db_user }}:{{ global.openstack.glance.db_pass }}@{{ global.haproxy.fqdn }}/glance"
+      keystone_authtoken:
+        www_authenticate_uri: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}"
+        auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}"
+        memcached_servers: "{% for host in groups['memcached'] %}{{ host }}:{{ global.memcached.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+        token_cache_time: 300
+        auth_type: password
+        project_domain_name: "{{ global.openstack.domain.default.name }}"
+        user_domain_name: "{{ global.openstack.domain.default.name }}"
+        project_name: "{{ global.openstack.glance.service.project }}"
+        username: glance
+        password: "{{ global.openstack.glance.service.pass }}"
+      matchmaker_redis:
+      oslo_messaging_amqp:
+      oslo_messaging_notifications:
+        driver: messagingv2
+        transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      oslo_messaging_rabbit:
+      oslo_messaging_zmq:
+      oslo_policy:
+      paste_deploy:
+        flavor: keystone
+      profiler:
+
+    api:
+      default:
+        log_dir: /var/log/glance
+        bind_host: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.glance.listen_interface)].ipv4.address }}"
+        transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+        #registry_host: "{{ ansible_hostname }}"
+        registry_host: "{{ global.haproxy.fqdn }}"
+        enable_v1_api: True
+        enable_v2_api: True
+        http_keepalive: True
+        digest_algorithm: sha256
+        show_multiple_locations: True
+        show_image_direct_url: True
+        hw_scsi_model: virtio-scsi
+        hw_disk_bus: scsi
+        hw_qemu_guest_agent: yes
+        os_require_quiesce: yes
+      cors:
+      database:
+        connection: "mysql+pymysql://{{ global.openstack.glance.db_user }}:{{ global.openstack.glance.db_pass }}@{{ global.haproxy.fqdn }}/glance"
+      glance_store:
+        stores: rbd
+        default_store: rbd
+        rbd_store_chunk_size: 8
+        rbd_store_pool: images
+        rbd_store_user: glance
+        rbd_store_ceph_conf: /etc/ceph/ceph.conf
+      image_format:
+      keystone_authtoken:
+        www_authenticate_uri: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}"
+        auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}"
+        memcached_servers: "{% for host in groups['memcached'] %}{{ host }}:{{ global.memcached.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+        token_cache_time: 300
+        auth_type: password
+        project_domain_name: "{{ global.openstack.domain.default.name }}"
+        user_domain_name: "{{ global.openstack.domain.default.name }}"
+        project_name: "{{ global.openstack.glance.service.project }}"
+        username: glance
+        password: "{{ global.openstack.glance.service.pass }}"
+      matchmaker_redis:
+      oslo_concurrency:
+      oslo_messaging_amqp:
+      oslo_messaging_kafka:
+      oslo_messaging_notifications:
+        driver: messagingv2
+        transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      oslo_messaging_rabbit:
+      oslo_messaging_zmq:
+      oslo_middleware:
+      oslo_policy:
+      paste_deploy:
+        flavor: keystone
+      profiler:
+      store_type_location_strategy:
+      task:
+      taskflow_executor:
+

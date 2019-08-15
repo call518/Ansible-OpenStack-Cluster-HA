@@ -1,0 +1,9 @@
+---
+# handlers file for openstack-barbican
+
+- name: Restart Barbican Service
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - openstack-barbican-api

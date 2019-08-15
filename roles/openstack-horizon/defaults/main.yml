@@ -1,0 +1,132 @@
+---
+# defaults file for openstack-horizon
+
+horizon:
+  local_settings:
+    debug: True
+    #webroot: "/dashboard/"
+    webroot: "{{ global.openstack.horizon.web_root }}"
+    openstack_api_versions:
+      identity: "{{ global.openstack.keystone.api.version }}"
+      image: "{{ global.openstack.glance.api.version }}"
+      volume: "{{ global.openstack.cinder.api.for_horizon }}"
+    secret_key: "e979cfa80bba30255847"
+    openstack_keystone_multidomain_support: True
+    openstack_keystone_default_domain: "{{ global.openstack.domain.default.name }}"
+    local_path: "/tmp"
+    session_engine: "django.contrib.sessions.backends.cache"
+    caches:
+      default:
+        backend: "django.core.cache.backends.memcached.MemcachedCache"
+        location_list: "{{ groups['memcached'] }}"
+        memcached_port: "{{ global.memcached.port }}"
+    email_backend: "django.core.mail.backends.console.EmailBackend"
+    openstack_host: "{{ ansible_fqdn }}"
+    openstack_keystone_url: "http://%s:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+    openstack_keystone_default_role: "user"
+    openstack_keystone_backend:
+      name: "native"
+      can_edit_user: True
+      can_edit_group: True
+      can_edit_project: True
+      can_edit_domain: True
+      can_edit_role: True
+    openstack_hypervisor_features:
+      can_set_mount_point: False
+      can_set_password: False
+      requires_keypair: False
+      enable_quotas: True
+    openstack_cinder_features:
+      enable_backup: True
+    openstack_neutron_network:
+      enable_router: True
+      enable_quotas: True
+      enable_ipv6: True
+      enable_distributed_router: True
+      enable_ha_router: True
+      enable_lb: True
+      enable_firewall: True
+      enable_vpn: True
+      enable_fip_topology_check: True
+      supported_vnic_types: "['*']"
+      physical_networks: "[]"
+    openstack_heat_stack:
+      enable_user_pass: True
+    image_custom_property_titles:
+      architecture: "_(\"Architecture\")"
+      kernel_id: "_(\"Kernel ID\")"
+      ramdisk_id: "_(\"Ramdisk ID\")"
+      image_state: "_(\"Euca2ools state\")"
+      project_id: "_(\"Project ID\")"
+      image_type: "_(\"Image Type\")"
+    image_reserved_custom_properties: "[]"
+    api_result_limit: 1000
+    api_result_page_size: 20
+    swift_file_transfer_chunk_size: "512 * 1024"
+    instance_log_length: 35
+    dropdown_max_items: 30
+    time_zone: "Asia/Seoul"
+    policy_files_path: "/etc/openstack-dashboard"
+    logging:
+      version: 1
+      disable_existing_loggers: False
+      formatters:
+        console:
+          format: "%(levelname)s %(name)s %(message)s"
+        operation:
+          format: "%(message)s"
+      handlers:
+        name_null:
+          level: "DEBUG"
+          class: "logging.NullHandler"
+        console:
+          level: "INFO"
+          class: "logging.StreamHandler"
+          formatter: "console"
+        operation:
+          level: "INFO"
+          class: "logging.StreamHandler"
+          formatter: "operation"
+      loggers:
+        - { title: "horizon", handlers: "['console']", level: "DEBUG", propagate: False }
+        - { title: "horizon.operation_log", handlers: "['operation']", level: "INFO", propagate: False }
+        - { title: "openstack_dashboard", handlers: "['console']", level: "DEBUG", propagate: False }
+        - { title: "novaclient", handlers: "['console']", level: "DEBUG", propagate: False }
+        - { title: "cinderclient", handlers: "['console']", level: "DEBUG", propagate: False }
+        - { title: "keystoneauth", handlers: "['console']", level: "DEBUG", propagate: False }
+        - { title: "keystoneclient", handlers: "['console']", level: "DEBUG", propagate: False }
+        - { title: "glanceclient", handlers: "['console']", level: "DEBUG", propagate: False }
+        - { title: "neutronclient", handlers: "['console']", level: "DEBUG", propagate: False }
+        - { title: "swiftclient", handlers: "['console']", level: "DEBUG", propagate: False }
+        - { title: "oslo_policy", handlers: "['console']", level: "DEBUG", propagate: False }
+        - { title: "openstack_auth", handlers: "['console']", level: "DEBUG", propagate: False }
+        - { title: "django", handlers: "['console']", level: "DEBUG", propagate: False }
+        - { title: "django.db.backends", handlers: "['null']", level: null, propagate: False }
+        - { title: "requests", handlers: "['null']", level: null, propagate: False }
+        - { title: "urllib3", handlers: "['null']", level: null, propagate: False }
+        - { title: "chardet.charsetprober", handlers: "['null']", level: null, propagate: False }
+        - { title: "iso8601", handlers: "['null']", level: null, propagate: False }
+        - { title: "scss", handlers: "['null']", level: null, propagate: False }
+    security_group_rules:
+        - { title: "all_tcp", name: "_('All TCP')", ip_protocol: "tcp", from_port: "1", to_port: "65535" }
+        - { title: "all_udp", name: "_('All UDP')", ip_protocol: "udp", from_port: "1", to_port: "65535" }
+        - { title: "all_icmp", name: "_('All ICMP')", ip_protocol: "icmp", from_port: "-1", to_port: "-1" }
+        - { title: "ssh", name: "'SSH'", ip_protocol: "tcp", from_port: "22", to_port: "22" }
+        - { title: "smtp", name: "'SMTP'", ip_protocol: "tcp", from_port: "25", to_port: "25" }
+        - { title: "dns", name: "'DNS'", ip_protocol: "tcp", from_port: "53", to_port: "53" }
+        - { title: "http", name: "'HTTP'", ip_protocol: "tcp", from_port: "80", to_port: "80" }
+        - { title: "pop3", name: "'POP3'", ip_protocol: "tcp", from_port: "110", to_port: "110" }
+        - { title: "imap", name: "'IMAP'", ip_protocol: "tcp", from_port: "143", to_port: "143" }
+        - { title: "ldap", name: "'LDAP'", ip_protocol: "tcp", from_port: "389", to_port: "389" }
+        - { title: "https", name: "'HTTPS'", ip_protocol: "tcp", from_port: "443", to_port: "443" }
+        - { title: "smtps", name: "'SMTPS'", ip_protocol: "tcp", from_port: "465", to_port: "465" }
+        - { title: "imaps", name: "'IMAPS'", ip_protocol: "tcp", from_port: "993", to_port: "993" }
+        - { title: "pop3s", name: "'POP3S'", ip_protocol: "tcp", from_port: "995", to_port: "995" }
+        - { title: "ms_sql", name: "'MS SQL'", ip_protocol: "tcp", from_port: "1433", to_port: "1433" }
+        - { title: "mysql", name: "'MYSQL'", ip_protocol: "tcp", from_port: "3306", to_port: "3306" }
+        - { title: "rdp", name: "'RDP'", ip_protocol: "tcp", from_port: "3389", to_port: "3389" }
+    rest_api_required_settings: "['OPENSTACK_HYPERVISOR_FEATURES','LAUNCH_INSTANCE_DEFAULTS','OPENSTACK_IMAGE_FORMATS','OPENSTACK_KEYSTONE_BACKEND','OPENSTACK_KEYSTONE_DEFAULT_DOMAIN','CREATE_IMAGE_DEFAULTS','ENFORCE_PASSWORD_CHECK']"
+    allowed_private_subnet_cidr: "{'ipv4': [], 'ipv6': []}"
+
+  httpd_conf:
+

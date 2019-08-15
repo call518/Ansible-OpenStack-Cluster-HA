@@ -1,0 +1,16 @@
+---
+mysql_root_user: "{{ global.galera.root_user }}"
+mysql_root_pass: "{{ global.galera.root_pass }}"
+galera_server_id: 1337
+galera_wsrep_cluster_name: ansible_galera_cluster
+bootstrapped: no
+galera_sst_user: galera
+galera_sst_pass: galera
+galera_listen_interface_fact_var: "ansible_{{ global.galera.listen_interface }}"
+#bind_address: "{{ ansible_eth0.ipv4.address }}"
+bind_address: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.galera.listen_interface)].ipv4.address }}"
+datadir: /var/lib/mysql
+wsrep_node_address: "{{ bind_address }}"
+wsrep_sst_receive_address: "{{ bind_address }}"
+mysql_log_slow_path: "/var/log/mysql/mysql-slow.log"
+mysql_long_query_time: 3

@@ -1,0 +1,11 @@
+---
+- hosts:
+    - openstack-controller
+  vars:
+  vars_files:
+    - "vars-global.yml"
+    - "vars-environment.yml"
+  roles:
+    - ceph-client
+    - openstack-gnocchi
+

@@ -1,0 +1,300 @@
+---
+# tasks file for openstack-nova-controller
+
+- name: Create MySQL Database - nova, nova_api, nova_cell0
+  mysql_db:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - nova
+    - nova_api
+    - nova_cell0
+    - placement
+  run_once: yes
+
+- name: Create MySQL User - nova
+  mysql_user:
+    name: "{{ item.user }}"
+    password: "{{ item.pass }}"
+    host: "{{ item.host }}"
+    priv: '{{ item.db }}.*:ALL'
+    append_privs: yes
+    state: present
+  with_items:
+    - { db: "nova", user: "{{ global.openstack.nova.api.db_user }}", pass: "{{ global.openstack.nova.api.db_pass }}", host: "localhost" }
+    - { db: "nova", user: "{{ global.openstack.nova.api.db_user }}", pass: "{{ global.openstack.nova.api.db_pass }}", host: "%" }
+    - { db: "nova_api", user: "{{ global.openstack.nova.api.db_user }}", pass: "{{ global.openstack.nova.api.db_pass }}", host: "localhost" }
+    - { db: "nova_api", user: "{{ global.openstack.nova.api.db_user }}", pass: "{{ global.openstack.nova.api.db_pass }}", host: "%" }
+    - { db: "nova_cell0", user: "{{ global.openstack.nova.api.db_user }}", pass: "{{ global.openstack.nova.api.db_pass }}", host: "localhost" }
+    - { db: "nova_cell0", user: "{{ global.openstack.nova.api.db_user }}", pass: "{{ global.openstack.nova.api.db_pass }}", host: "%" }
+    - { db: "placement", user: "{{ global.openstack.nova.placement.db_user }}", pass: "{{ global.openstack.nova.placement.db_pass }}", host: "localhost" }
+    - { db: "placement", user: "{{ global.openstack.nova.placement.db_user }}", pass: "{{ global.openstack.nova.placement.db_pass }}", host: "%" }
+  run_once: yes
+
+#########################################################
+
+- name: Install Nova::Controller Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openstack-nova-api
+      - openstack-nova-conductor
+      - openstack-nova-scheduler
+      - openstack-nova-placement-api
+      - openstack-nova-console
+      #- openstack-nova-novncproxy
+
+#########################################################
+
+- name: Check Exist User - nova
+  shell: |
+    openstack user show nova
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_user_nova
+
+- name: Create User - nova
+  shell: |
+    openstack user create --domain {{ global.openstack.domain.default.id }} --password {{ global.openstack.nova.api.service.pass }} nova
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_user_nova.rc != 0
+
+- name: Check Role-Assignment - nova
+  shell: |
+    openstack role assignment list --user nova --project {{ global.openstack.nova.api.service.project }} --names -f value -c User
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_role_assignment_nova
+
+- name: Assignment Role to User - nova
+  shell: |
+    openstack role add --project {{ global.openstack.nova.api.service.project }} --user nova {{ global.openstack.nova.api.service.role }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: '"nova@" + global.openstack.domain.default.name not in check_role_assignment_nova.stdout_lines'
+
+#########################################################
+
+- name: Check Exist User - placement
+  shell: |
+    openstack user show placement
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_user_placement
+
+- name: Create User - placement
+  shell: |
+    openstack user create --domain {{ global.openstack.domain.default.id }} --password {{ global.openstack.nova.placement.service.pass }} placement
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_user_placement.rc != 0
+
+- name: Check Role-Assignment - placement
+  shell: |
+    openstack role assignment list --user placement --project {{ global.openstack.nova.placement.service.project }} --names -f value -c User
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_role_assignment_placement
+
+- name: Assignment Role to User - placement
+  shell: |
+    openstack role add --project {{ global.openstack.nova.placement.service.project }} --user placement {{ global.openstack.nova.placement.service.role }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: '"placement@" + global.openstack.domain.default.name not in check_role_assignment_placement.stdout_lines'
+
+#########################################################
+
+- name: Check Service - nova
+  shell: |
+    openstack service show nova -f value
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_service_nova
+
+- name: Create Service - nova
+  shell: |
+    openstack service create --name nova --description "OpenStack Compute" {{ global.openstack.nova.api.service.type }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_service_nova.rc != 0
+
+#########################################################
+
+- name: Check Service - placement
+  shell: |
+    openstack service show placement -f value
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_service_placement
+
+- name: Create Service - placement
+  shell: |
+    openstack service create --name placement --description "Placement API" {{ global.openstack.nova.placement.service.type }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_service_placement.rc != 0
+
+#########################################################
+
+- name: Check Exist EndPoint - nova
+  shell: |
+    openstack endpoint list --service {{ item.service }} --interface {{ item.interface }} --region {{ item.region }} -f value -c 'Region' -c 'Service Name' -c 'Interface'
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  with_items: "{{ nova.endpoint }}"
+  register: check_exist_endpoint
+
+- name: Create EndPoint - nova
+  vars:
+    result_check_string: "{{ item.item.region }} {{ item.item.service }} {{ item.item.interface }}"
+  shell: |
+    openstack endpoint create --region {{ item.item.region }} {{ item.item.type }} {{ item.item.interface }} {{ item.item.url }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  with_items: "{{ check_exist_endpoint.results }}"
+  when: "result_check_string not in item.stdout_lines"
+
+#########################################################
+
+#########################################################
+
+- name: Config Placement WSGI - /etc/httpd/conf.d/00-nova-placement-api.conf
+  template:
+    src: "00-nova-placement-api.conf.j2"
+    dest: "/etc/httpd/conf.d/00-nova-placement-api.conf"
+    owner: root
+    group: root
+    mode: '0640'
+    backup: yes
+  notify: Restart HTTPd Service
+
+- name: Config Nova - /etc/nova/nova.conf
+  template:
+    src: "nova.conf.j2"
+    dest: "/etc/nova/nova.conf"
+    owner: root
+    group: nova
+    mode: '0640'
+    backup: yes
+  notify: Restart Nova Service - Controller
+
+#########################################################
+
+- name: Create DB-Tables for nova_api & placement
+  become: yes
+  become_user: nova
+  shell: nova-manage api_db sync
+  args:
+    executable: /bin/sh
+  run_once: yes
+
+- name: Register Cell - cell0
+  become: yes
+  become_user: nova
+  shell: nova-manage cell_v2 map_cell0
+  args:
+    executable: /bin/sh
+  run_once: yes
+
+- name: Check Cell - cell1
+  become: yes
+  become_user: nova
+  shell: |
+    nova-manage cell_v2 list_cells
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_cell_cell1
+
+- name: Create Cell - cell1
+  become: yes
+  become_user: nova
+  shell: nova-manage cell_v2 create_cell --name=cell1 --verbose
+  args:
+    executable: /bin/sh
+  run_once: yes
+  when: '"| cell1 |" not in check_cell_cell1.stdout'
+
+- name: Create DB-Tables for nova
+  become: yes
+  become_user: nova
+  shell: nova-manage db sync
+  args:
+    executable: /bin/sh
+  run_once: yes
+
+#########################################################
+
+- name: Ensure HTTPd Service Running
+  systemd:
+    name: httpd
+    state: started
+    enabled: yes
+
+- name: Ensure Nova Service Running
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - openstack-nova-api
+    - openstack-nova-consoleauth
+    - openstack-nova-scheduler
+    - openstack-nova-conductor
+    - openstack-nova-metadata-api
+    #- openstack-nova-novncproxy
+
+#########################################################
+
+- meta: flush_handlers
+
+- name: Reset Permission Nova Log File - All to 0644
+  file:
+    path: "/var/log/nova"
+    owner: nova
+    group: nova
+    mode: '0644'
+    recurse: yes
+
+- name: Reset Permission Nova Log File - Directory to 0755
+  file:
+    path: "/var/log/nova"
+    owner: nova
+    group: nova
+    mode: '0755'
+
+#########################################################
+
+- name: Check Exist Flavor - m1.tiny
+  shell: |
+    openstack flavor show m1.tiny
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_flavor_m1_tiny
+
+- name: Create Flavor - m1.tiny
+  shell: |
+    openstack flavor create --id 99999 --ram 512  --vcpus 1 --disk 10  m1.tiny
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_flavor_m1_tiny.rc != 0

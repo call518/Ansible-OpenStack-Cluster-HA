@@ -1,0 +1,86 @@
+---
+# defaults file for openstack-heat
+
+heat:
+  endpoint:
+    - { region: "{{ global.openstack.heat.service.region }}", type: "{{ global.openstack.heat.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.heat_api }}/v1/%\\(tenant_id\\)s", interface: "admin", service: "{{ global.openstack.heat.service.name }}" }
+    - { region: "{{ global.openstack.heat.service.region }}", type: "{{ global.openstack.heat.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.heat_api }}/v1/%\\(tenant_id\\)s", interface: "internal", service: "{{ global.openstack.heat.service.name }}" }
+    - { region: "{{ global.openstack.heat.service.region }}", type: "{{ global.openstack.heat.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.heat_api }}/v1/%\\(tenant_id\\)s", interface: "public", service: "{{ global.openstack.heat.service.name }}" }
+    - { region: "{{ global.openstack.heat_cfn.service.region }}", type: "{{ global.openstack.heat_cfn.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.heat_api_cfn }}", interface: "admin", service: "{{ global.openstack.heat_cfn.service.name }}" }
+    - { region: "{{ global.openstack.heat_cfn.service.region }}", type: "{{ global.openstack.heat_cfn.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.heat_api_cfn }}", interface: "internal", service: "{{ global.openstack.heat_cfn.service.name }}" }
+    - { region: "{{ global.openstack.heat_cfn.service.region }}", type: "{{ global.openstack.heat_cfn.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.heat_api_cfn }}", interface: "public", service: "{{ global.openstack.heat_cfn.service.name }}" }
+  conf:
+    default:
+      log_dir: /var/log/heat
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      heat_metadata_server_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.heat_api_cfn }}"
+      heat_waitcondition_server_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.heat_api_cfn }}/v1/waitcondition"
+      stack_user_domain_name: heat
+      stack_domain_admin: "{{ global.openstack.heat.domain_admin.user }}"
+      stack_domain_admin_password: "{{ global.openstack.heat.domain_admin.pass }}"
+    auth_password:
+    clients:
+    clients_aodh:
+    clients_barbican:
+    clients_ceilometer:
+    clients_cinder:
+    clients_designate:
+    clients_glance:
+    clients_heat:
+    clients_keystone:
+      auth_uri: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}"
+    clients_magnum:
+    clients_manila:
+    clients_mistral:
+    clients_monasca:
+    clients_neutron:
+    clients_nova:
+    clients_sahara:
+    clients_senlin:
+    clients_swift:
+    clients_trove:
+    clients_zaqar:
+    cors:
+    cors_subdomain:
+    database:
+      backend: sqlalchemy
+      connection: "mysql+pymysql://{{ global.openstack.heat.db_user }}:{{ global.openstack.heat.db_pass }}@{{ global.haproxy.fqdn }}/heat"
+    keystone_authtoken:
+      www_authenticate_uri: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}"
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}"
+      memcached_servers: "{% for host in groups['memcached'] %}{{ host }}:{{ global.memcached.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      auth_type: password
+      project_domain_name: "{{ global.openstack.domain.default.name }}"
+      user_domain_name: "{{ global.openstack.domain.default.name }}"
+      project_name: "{{ global.openstack.heat.service.project }}"
+      username: heat
+      password: "{{ global.openstack.heat.service.pass }}"
+    ec2authtoken:
+      auth_uri: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+    eventlet_opts:
+    heat_api:
+      bind_host: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.heat.listen_interface)].ipv4.address }}"
+    heat_api_cfn:
+      bind_host: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.heat.listen_interface)].ipv4.address }}"
+    heat_api_cloudwatch:
+      bind_host: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.heat.listen_interface)].ipv4.address }}"
+    matchmaker_redis:
+    oslo_messaging_amqp:
+    oslo_messaging_notifications:
+      driver: messagingv2
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+    oslo_messaging_rabbit:
+    oslo_messaging_zmq:
+    oslo_middleware:
+    oslo_policy:
+    paste_deploy:
+    profiler:
+    revision:
+    ssl:
+    trustee:
+      auth_type: password
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      username: heat
+      password: "{{ global.openstack.heat.service.pass }}"
+      user_domain_name: "{{ global.openstack.domain.default.name }}"
+    volumes:

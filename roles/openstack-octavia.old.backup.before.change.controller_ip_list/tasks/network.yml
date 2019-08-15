@@ -1,0 +1,274 @@
+---
+# tasks file for openstack-octavia-network
+
+- name: Install Octavia Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openstack-octavia-worker
+      - openstack-octavia-health-manager
+      - openstack-octavia-housekeeping
+      - python2-octaviaclient
+
+#########################################################
+
+- name: Create Management SSK-Key Directory
+  file:
+    path: "{{ octavia.mgmt_ssh_key.dir_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Check Exist Management SSH-Key File
+  stat:
+    path: "{{ octavia.mgmt_ssh_key.dir_path }}/{{octavia.mgmt_ssh_key.name }}"
+  register: check_exist_mgmt_ssh_key_pair
+  run_once: yes
+
+#- debug: var=check_exist_mgmt_ssh_key_pair
+
+- name: Create Management SSH-Key Pair
+  shell: |
+    ssh-keygen -b 2048 -t rsa -N "" -f {{ octavia.mgmt_ssh_key.dir_path }}/{{octavia.mgmt_ssh_key.name }}
+  run_once: yes
+  when: check_exist_mgmt_ssh_key_pair.stat.exists is not defined or check_exist_mgmt_ssh_key_pair.stat.exists != True
+  register: create_mgmt_ssh_key_pair
+
+- name: Sync(Pull) - Management SSH-Key Pair from First Host
+  synchronize:
+    src: "{{ octavia.mgmt_ssh_key.dir_path }}"
+    dest: "{{ octavia.mgmt_ssh_key.tmp_path }}"
+    mode: pull
+  run_once: yes
+  #when: create_mgmt_ssh_key_pair.changed == True
+  #register: pull_mgmt_ssh_key_pari
+
+- name: Sync(Push) - Management SSH-Key Pair to ALL Hosts
+  synchronize:
+    src: "{{ octavia.mgmt_ssh_key.tmp_path }}/.ssh"
+    dest: "{{ octavia.mgmt_ssh_key.dir_path | dirname }}"
+    mode: push
+  #when: pull_mgmt_ssh_key_pari.changed == True
+
+- name: Check Exist Amphora SSH Keypair
+  shell: |
+    openstack keypair show octavia_ssh_key
+  environment: "{{ env.openstack.octavia_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_amphora_ssh_keypair
+
+- name: Create Amphora SSH Keypair
+  shell: |
+    openstack keypair create --public-key={{ octavia.mgmt_ssh_key.dir_path }}/{{ octavia.conf.controller_worker.amp_ssh_key_name }}.pub {{ octavia.conf.controller_worker.amp_ssh_key_name }}
+  environment: "{{ env.openstack.octavia_openrc }}"
+  run_once: yes
+  when: check_amphora_ssh_keypair.rc != 0
+
+#########################################################
+
+- name: Copy Certificates Generator Script
+  synchronize:
+    src: "certificates"
+    dest: "{{ octavia.certificates.script_path | replace('/certificates', '') }}"
+    mode: push
+  run_once: yes
+
+- name: Check Exist Certificates Directory
+  stat:
+    path: "{{ octavia.certificates.certs_path }}"
+  register: check_exist_certificates
+  run_once: yes
+
+- name: Create Certificates for Octavia
+  shell: |
+    source create_certificates.sh {{ octavia.certificates.certs_path }} {{ octavia.certificates.script_path }}/openssl.cnf
+  args:
+    executable: /bin/bash
+    chdir: "{{ octavia.certificates.script_path }}"
+  run_once: yes
+  when: check_exist_certificates.stat.exists is not defined or check_exist_certificates.stat.exists != True
+
+- name: Sync(Pull) - Certs Directory from First Host
+  synchronize:
+    src: "{{ octavia.certificates.certs_path }}"
+    dest: "{{ octavia.certificates.tmp_path }}"
+    mode: pull
+  run_once: yes
+
+- name: Sync(Push) - Certs Directory to ALL Hosts
+  synchronize:
+    src: "{{ octavia.certificates.tmp_path }}/certs"
+    dest: "{{ octavia.certificates.certs_path | dirname }}"
+    mode: push
+
+- name: Change Permission and Owhership
+  #shell: |
+  #  chown -R octavia:octavia {{ octavia.certificates.certs_path }}
+  file:
+    path: "{{ octavia.certificates.certs_path }}"
+    owner: octavia
+    group: octavia
+    recurse: yes
+
+#########################################################
+
+- name: Query Project-ID of Octavia
+  shell: |
+    openstack project show {{ global.openstack.octavia.service.project }} -f value -c id
+  environment: "{{ env.openstack.octavia_openrc }}"
+  run_once: yes
+  register: query_octavia_project_id
+
+#- debug: var=query_octavia_project_id.stdout
+
+- name: Query Network-ID of lb-mgmt-net
+  shell: |
+    openstack network show {{ octavia.mgmt_network.name }} -f value -c id
+  environment: "{{ env.openstack.octavia_openrc }}"
+  run_once: yes
+  register: query_octavia_network_id
+
+#- debug: var=query_octavia_network_id.stdout
+
+- name: Query SecurityGroup-ID of lb-mgmt-sec-grp
+  shell: |
+    openstack security group show {{ octavia.mgmt_network.security_group.name }} -f value -c id
+  environment: "{{ env.openstack.octavia_openrc }}"
+  run_once: yes
+  register: query_octavia_security_group_id
+
+#- debug: var=query_octavia_security_group_id.stdout
+
+- name: Config Octavia - /etc/octavia/octavia.conf
+  vars:
+    octavia_conf_controller_worker_amp_image_owner_id: "{{ query_octavia_project_id.stdout }}"
+    octavia_conf_controller_worker_amp_boot_network_list: "{{ query_octavia_network_id.stdout }}"
+    octavia_conf_controller_worker_amp_secgroup_list: "{{ query_octavia_security_group_id.stdout }}"
+  template:
+    src: "octavia.conf.j2"
+    dest: "/etc/octavia/octavia.conf"
+    owner: root
+    group: octavia
+    mode: '0640'
+    backup: yes
+  notify: Restart Octavia Service - Network
+
+#########################################################
+
+- name: Ensure Octavia Service Running
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - octavia-worker
+    - octavia-health-manager
+    - octavia-housekeeping
+
+#########################################################
+
+- name: Create /root/octavia-openrc
+  template:
+    src: "octavia-openrc.j2"
+    dest: "/root/octavia-openrc"
+    owner: root
+    group: root
+    mode: '0600'
+    backup: yes
+
+#########################################################
+
+- name: Check Management Port - octavia-mgmt-port-X
+  vars:
+    mgmt_port_name: "{{ octavia.mgmt_port.name }}-{{ groups['openstack-network'].index(inventory_hostname) }}"
+  shell: |
+    openstack port show {{ mgmt_port_name }}
+  environment: "{{ env.openstack.octavia_openrc }}"
+  changed_when: false
+  failed_when: no
+  register: check_mgmt_port
+
+#- debug: var=check_mgmt_port
+
+#- name: Query Node Hostname
+#  shell: hostname
+#  failed_when: query_node_hostname.rc != 0 or query_node_hostname.stdout == ""
+#  register: query_node_hostname
+
+- name: Create Management Port - octavia-mgmt-port-X
+  vars:
+    mgmt_port_name: "{{ octavia.mgmt_port.name }}-{{ groups['openstack-network'].index(inventory_hostname) }}"
+    #node_hostname: "{{ query_node_hostname.stdout }}"
+  #shell: neutron port-create --name octavia-mgmt-port-0 --security-group lb-mgmt-sec-grp --device-owner Octavia:health-mgr --binding:host_id=$(hostname) lb-mgmt-net --tenant-id $(openstack project list -f value | awk '/service$/ {print $1}')
+  #shell: neutron port-create --name {{ mgmt_port_name }} --security-group {{ octavia.mgmt_network.security_group.name }} --device-owner Octavia:health-mgr --binding:host_id={{ ansible_fqdn }} {{ octavia.mgmt_network.name }} --tenant-id {{ query_octavia_project_id.stdout }}
+  #shell: neutron port-create --name {{ mgmt_port_name }} --security-group {{ octavia.mgmt_network.security_group.name }} --device-owner Octavia:health-mgr --binding:host_id={{ query_node_hostname.stdout }} {{ octavia.mgmt_network.name }} --tenant-id {{ query_octavia_project_id.stdout }}
+  shell: neutron port-create --name {{ mgmt_port_name }} --security-group {{ octavia.mgmt_network.security_group.name }} --device-owner Octavia:health-mgr --binding:host_id=$(hostname) {{ octavia.mgmt_network.name }} --tenant-id {{ query_octavia_project_id.stdout }}
+  environment: "{{ env.openstack.octavia_openrc }}"
+  when: check_mgmt_port.rc != 0
+
+- name: Query Management Port ID
+  vars:
+    mgmt_port_name: "{{ octavia.mgmt_port.name }}-{{ groups['openstack-network'].index(inventory_hostname) }}"
+  shell: |
+    openstack port show {{ mgmt_port_name }} -f value -c id
+  environment: "{{ env.openstack.octavia_openrc }}"
+  register: query_mgmt_port_id
+
+- name: Query Management Port Mac-Address
+  vars:
+    mgmt_port_name: "{{ octavia.mgmt_port.name }}-{{ groups['openstack-network'].index(inventory_hostname) }}"
+  shell: |
+    openstack port show {{ mgmt_port_name }} -f value -c mac_address
+  environment: "{{ env.openstack.octavia_openrc }}"
+  failed_when: query_mgmt_port_mac_address.stdout == ""
+  register: query_mgmt_port_mac_address
+
+- name: Config OVS interface for o-hm0
+  vars:
+    mgmt_port_name: "{{ octavia.mgmt_port.name }}-{{ groups['openstack-network'].index(inventory_hostname) }}"
+  #shell: ovs-vsctl --may-exist add-port br-int o-hm0 -- set Interface o-hm0 type=internal -- set Interface o-hm0 external-ids:iface-status=active -- set Interface o-hm0 external-ids:attached-mac=$(openstack port list -f value | awk '/ octavia-mgmt-port-0 / {print $3}') -- set Interface o-hm0 external-ids:iface-id=$(openstack port list -f value | awk '/ octavia-mgmt-port-0 / {print $1}')
+  shell: ovs-vsctl --may-exist add-port br-int {{ octavia.mgmt_port.interface }} -- set Interface {{ octavia.mgmt_port.interface }} type=internal -- set Interface {{ octavia.mgmt_port.interface }} external-ids:iface-status=active -- set Interface {{ octavia.mgmt_port.interface }} external-ids:attached-mac={{ query_mgmt_port_mac_address.stdout }} -- set Interface {{ octavia.mgmt_port.interface }} external-ids:iface-id={{ query_mgmt_port_id.stdout }}
+  environment: "{{ env.openstack.octavia_openrc }}"
+  
+- name: Set Link - o-hm0
+  vars:
+    mgmt_port_name: "{{ octavia.mgmt_port.name }}-{{ groups['openstack-network'].index(inventory_hostname) }}"
+  shell: |
+    ip link set dev {{ octavia.mgmt_port.interface }} address {{ query_mgmt_port_mac_address.stdout }}
+    ifconfig {{ octavia.mgmt_port.interface }} up
+  environment: "{{ env.openstack.octavia_openrc }}"
+
+- name: Config DHCP Client for o-hm0 - /etc/octavia/octavia-dhclient.conf
+  template:
+    src: "octavia-dhclient.conf.j2"
+    dest: "{{ octavia.mgmt_port.dhclient_conf_path }}"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+
+- name: Check o-hm0 Port ACTIVE
+  vars:
+    mgmt_port_name: "{{ octavia.mgmt_port.name }}-{{ groups['openstack-network'].index(inventory_hostname) }}"
+  shell: |
+    openstack port show {{ mgmt_port_name }} -f value -c status
+  environment: "{{ env.openstack.octavia_openrc }}"
+  changed_when: false
+  failed_when: no
+  register: check_mgmt_port_active
+
+- name: Reload DHCP Client for o-hm0
+  vars:
+    fact_o_hm0_name: "ansible_{{ octavia.mgmt_port.interface | replace('-', '_')}}"
+  #shell: dhclient -v {{ octavia.mgmt_port.interface }} -cf {{ octavia.mgmt_port.dhclient_conf_path }}
+  shell: |
+    kill -9 $(cat /var/run/dhclient-o-hm0.pid) > /dev/null 2>&1 | true
+    /sbin/dhclient -1 -v -cf {{ octavia.mgmt_port.dhclient_conf_path }} -lf /var/lib/dhclient/dhclient-{{ octavia.mgmt_port.interface }}.lease -pf /var/run/dhclient-{{ octavia.mgmt_port.interface }}.pid {{ octavia.mgmt_port.interface }}
+  failed_when: check_mgmt_port_active.stdout != 'ACTIVE'
+  when: (check_mgmt_port_active.stdout == 'ACTIVE')
+  #when: (check_mgmt_port_active.stdout == 'ACTIVE') and (vars[fact_o_hm0_name] is not defined or vars[fact_o_hm0_name].ipv4 is not defined or vars[fact_o_hm0_name].ipv4.address is not defined)

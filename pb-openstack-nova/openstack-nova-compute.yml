@@ -1,0 +1,16 @@
+---
+- hosts:
+    - openstack-compute
+  vars:
+  vars_files:
+    - "vars-global.yml"
+    - "vars-environment.yml"
+    - "vars-network-br-ex.yml"
+    - "vars-ceph-client.yml"
+    #- "vars-sysctl-openstack-nova-compute.yml"
+  roles:
+    - network-br-ex
+    - ceph-client
+    #- { role: sysctl, tags: [ 'compute' ] }
+    - openstack-nova
+

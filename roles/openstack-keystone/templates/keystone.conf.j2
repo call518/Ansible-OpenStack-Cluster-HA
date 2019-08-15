@@ -1,0 +1,54 @@
+[DEFAULT]
+log_dir = {{ keystone.conf.default.log_dir }}
+transport_url = {{ keystone.conf.default.transport_url }}
+[assignment]
+[auth]
+[cache]
+memcache_servers = {{ keystone.conf.cache.memcache_servers }}
+[catalog]
+driver = sql
+[cors]
+[cors.subdomain]
+[credential]
+[database]
+connection = {{ keystone.conf.database.connection }}
+[domain_config]
+[endpoint_filter]
+[endpoint_policy]
+[eventlet_server]
+public_bind_host = {{ keystone.conf.eventlet_server.public_bind_host }}
+admin_bind_host = {{ keystone.conf.eventlet_server.admin_bind_host }}
+[federation]
+[fernet_tokens]
+[identity]
+driver = sql
+[identity_mapping]
+[kvs]
+[ldap]
+[matchmaker_redis]
+[memcache]
+servers = {{ keystone.conf.memcache.servers }}
+[oauth1]
+[os_inherit]
+[oslo_messaging_amqp]
+[oslo_messaging_notifications]
+driver = {{ keystone.conf.oslo_messaging_notifications.driver }}
+transport_url = {{ keystone.conf.oslo_messaging_notifications.transport_url }}
+[oslo_messaging_rabbit]
+[oslo_messaging_zmq]
+[oslo_middleware]
+[oslo_policy]
+[paste_deploy]
+[policy]
+[profiler]
+[resource]
+[revoke]
+[role]
+[saml]
+[security_compliance]
+[shadow_users]
+[signing]
+[token]
+provider = {{ keystone.conf.token.provider }}
+[tokenless_auth]
+[trust]

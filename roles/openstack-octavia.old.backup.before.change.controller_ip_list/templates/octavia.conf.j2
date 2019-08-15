@@ -1,0 +1,86 @@
+[DEFAULT]
+log_dir = {{ octavia.conf.default.log_dir }}
+transport_url = {{ octavia.conf.default.transport_url }}
+[api_settings]
+bind_host = {{ octavia.conf.api_settings.bind_host }}
+bind_port = {{ octavia.conf.api_settings.bind_port }}
+[database]
+connection = {{ octavia.conf.database.connection }}
+[health_manager]
+event_streamer_driver = {{ octavia.conf.health_manager.event_streamer_driver }}
+sync_provisioning_status = {{ octavia.conf.health_manager.sync_provisioning_status }}
+heartbeat_key = {{ octavia.conf.health_manager.heartbeat_key }}
+bind_port = {{ octavia.conf.health_manager.bind_port }}
+bind_ip = {{ octavia.conf.health_manager.bind_ip }}
+controller_ip_port_list = {{ octavia.conf.health_manager.controller_ip_port_list }}
+[keystone_authtoken]
+www_authenticate_uri = {{ octavia.conf.keystone_authtoken.www_authenticate_uri }}
+auth_url = {{ octavia.conf.keystone_authtoken.auth_url }}
+project_domain_name = {{ octavia.conf.keystone_authtoken.project_domain_name }}
+user_domain_name = {{ octavia.conf.keystone_authtoken.user_domain_name }}
+project_name = {{ octavia.conf.keystone_authtoken.project_name }}
+auth_type = {{ octavia.conf.keystone_authtoken.auth_type }}
+username = {{ octavia.conf.keystone_authtoken.username }}
+password = {{ octavia.conf.keystone_authtoken.password }}
+[certificates]
+ca_private_key_passphrase = {{ octavia.conf.certificates.ca_private_key_passphrase }}
+ca_certificate = {{ octavia.conf.certificates.ca_certificate }}
+ca_private_key = {{ octavia.conf.certificates.ca_private_key }}
+[anchor]
+[networking]
+[haproxy_amphora]
+haproxy_stick_size = {{ octavia.conf.haproxy_amphora.haproxy_stick_size }}
+server_ca = {{ octavia.conf.haproxy_amphora.server_ca }}
+client_cert = {{ octavia.conf.haproxy_amphora.client_cert }}
+key_path = {{ octavia.conf.haproxy_amphora.key_path }}
+base_path = {{ octavia.conf.haproxy_amphora.base_path }}
+base_cert_dir = {{ octavia.conf.haproxy_amphora.base_cert_dir }}
+rest_request_conn_timeout = {{ octavia.conf.haproxy_amphora.rest_request_conn_timeout }}
+rest_request_read_timeout = {{ octavia.conf.haproxy_amphora.rest_request_read_timeout }}
+active_connection_max_retries = {{ octavia.conf.haproxy_amphora.active_connection_max_retries }}
+active_connection_rety_interval = {{ octavia.conf.haproxy_amphora.active_connection_rety_interval }}
+bind_host = {{ octavia.conf.haproxy_amphora.bind_host }}
+bind_port = {{ octavia.conf.haproxy_amphora.bind_port }}
+[controller_worker]
+amp_active_retries = {{ octavia.conf.controller_worker.amp_active_retries }}
+amp_active_wait_sec = {{ octavia.conf.controller_worker.amp_active_wait_sec }}
+amp_image_tag = {{ octavia.conf.controller_worker.amp_image_tag }}
+amp_image_owner_id = {{ octavia_conf_controller_worker_amp_image_owner_id }}
+amp_flavor_id = {{ octavia.conf.controller_worker.amp_flavor_id }}
+amp_ssh_key_name = {{ octavia.conf.controller_worker.amp_ssh_key_name }}
+amp_boot_network_list = {{ octavia_conf_controller_worker_amp_boot_network_list }}
+amp_secgroup_list = {{ octavia_conf_controller_worker_amp_secgroup_list }}
+amphora_driver = {{ octavia.conf.controller_worker.amphora_driver }}
+compute_driver = {{ octavia.conf.controller_worker.compute_driver }}
+network_driver = {{ octavia.conf.controller_worker.network_driver }}
+loadbalancer_topology = {{ octavia.conf.controller_worker.loadbalancer_topology }}
+[task_flow]
+[oslo_messaging]
+rpc_thread_pool_size = {{ octavia.conf.oslo_messaging.rpc_thread_pool_size }}
+topic = {{ octavia.conf.oslo_messaging.topic }}
+#event_stream_topic = {{ octavia.conf.oslo_messaging.event_stream_topic }}
+#event_stream_transport_url = {{ octavia.conf.oslo_messaging.event_stream_transport_url }}
+[house_keeping]
+[amphora_agent]
+[keepalived_vrrp]
+[service_auth]
+www_authenticate_uri = {{ octavia.conf.service_auth.www_authenticate_uri }}
+auth_url = {{ octavia.conf.service_auth.auth_url }}
+memcache_servers = {{ octavia.conf.service_auth.memcache_servers }}
+project_domain_name = {{ octavia.conf.service_auth.project_domain_name }}
+user_domain_name = {{ octavia.conf.service_auth.user_domain_name }}
+project_name = {{ octavia.conf.service_auth.project_name }}
+username = {{ octavia.conf.service_auth.username }}
+password = {{ octavia.conf.service_auth.password }}
+auth_type = {{ octavia.conf.service_auth.auth_type }}
+[nova]
+enable_anti_affinity = {{ octavia.conf.nova.enable_anti_affinity }}
+anti_affinity_policy = {{ octavia.conf.nova.anti_affinity_policy }}
+[glance]
+[neutron]
+[quotas]
+default_load_balancer_quota = {{ octavia.conf.quotas.default_load_balancer_quota }}
+default_listener_quota = {{ octavia.conf.quotas.default_listener_quota }}
+default_member_quota = {{ octavia.conf.quotas.default_member_quota }}
+default_pool_quota = {{ octavia.conf.quotas.default_pool_quota }}
+default_health_monitor_quota = {{ octavia.conf.quotas.default_health_monitor_quota }}

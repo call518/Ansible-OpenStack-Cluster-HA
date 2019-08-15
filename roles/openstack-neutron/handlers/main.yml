@@ -1,0 +1,60 @@
+---
+# handlers file for openstack-neutron
+
+- name: Restart Neutron Service - Controller::ALL
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - neutron-server
+
+- name: Restart Neutron Service - Network::ALL
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - neutron-dhcp-agent
+    - neutron-l3-agent
+    - neutron-metadata-agent
+    - neutron-metering-agent
+    - neutron-openvswitch-agent
+
+- name: Restart Neutron Service - Compute::ALL
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - neutron-l3-agent
+    - neutron-metering-agent
+    - neutron-openvswitch-agent
+
+- name: Restart Neutron Service - neutron-server
+  systemd:
+    name: "neutron-server"
+    state: restarted
+
+- name: Restart Neutron Service - neutron-dhcp-agent
+  systemd:
+    name: "neutron-dhcp-agent"
+    state: restarted
+
+- name: Restart Neutron Service - neutron-l3-agent
+  systemd:
+    name: "neutron-l3-agent"
+    state: restarted
+
+- name: Restart Neutron Service - neutron-metadata-agent
+  systemd:
+    name: "neutron-metadata-agent"
+    state: restarted
+
+- name: Restart Neutron Service - neutron-metering-agent
+  systemd:
+    name: "neutron-metering-agent"
+    state: restarted
+
+- name: Restart Neutron Service - neutron-openvswitch-agent
+  systemd:
+    name: "neutron-openvswitch-agent"
+    state: restarted
+

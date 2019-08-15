@@ -1,0 +1,59 @@
+---
+# defaults file for openstack-aodh
+
+aodh:
+  endpoint:
+    - { region: "{{ global.openstack.aodh.service.region }}", type: "{{ global.openstack.aodh.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.aodh }}", interface: "admin", service: "{{ global.openstack.aodh.service.name }}" }
+    - { region: "{{ global.openstack.aodh.service.region }}", type: "{{ global.openstack.aodh.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.aodh }}", interface: "internal", service: "{{ global.openstack.aodh.service.name }}" }
+    - { region: "{{ global.openstack.aodh.service.region }}", type: "{{ global.openstack.aodh.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.aodh }}", interface: "public", service: "{{ global.openstack.aodh.service.name }}" }
+  conf:
+    default:
+      log_dir: /var/log/aodh
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      auth_strategy: keystone
+    api:
+      auth_mode: keystone
+      gnocchi_external_project_owner: "{{ global.openstack.gnocchi.service.project }}"
+      gnocchi_external_domain_name: "{{ global.openstack.domain.default.name }}"
+    coordination:
+    cors:
+    cors.subdomain:
+    database:
+      connection: "mysql+pymysql://{{ global.openstack.aodh.db_user }}:{{ global.openstack.aodh.db_pass }}@{{ global.haproxy.fqdn }}/aodh"
+    evaluator:
+    keystone_authtoken:
+      www_authenticate_uri: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      memcached_servers: "{% for host in groups['memcached'] %}{{ host }}:{{ global.memcached.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      auth_type: password
+      project_domain_name: "{{ global.openstack.domain.default.name }}"
+      user_domain_name: "{{ global.openstack.domain.default.name }}"
+      project_name: "{{ global.openstack.aodh.service.project }}"
+      username: aodh
+      password: "{{ global.openstack.aodh.service.pass }}"
+    listener:
+    matchmaker_redis:
+    notifier:
+    oslo_messaging_amqp:
+    oslo_messaging_notifications:
+      driver: messagingv2
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+    oslo_messaging_rabbit:
+    oslo_messaging_zmq:
+    oslo_middleware:
+    oslo_policy:
+    service_credentials:
+      auth_type: password
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      project_domain_id: "{{ global.openstack.domain.default.name }}"
+      user_domain_id: "{{ global.openstack.domain.default.name }}"
+      project_name: "{{ global.openstack.aodh.service.project }}"
+      username: aodh
+      password: "{{ global.openstack.aodh.service.pass }}"
+      interface: internalURL
+      region_name: "{{ global.openstack.aodh.service.region }}"
+    service_types:
+
+  api:
+    bind_host: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.aodh.listen_interface)].ipv4.address }}"
+    bind_port: "{{ global.openstack.service_port.aodh }}"

@@ -1,0 +1,30 @@
+---
+
+- name: Install Ceilometer Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openstack-ceilometer-compute
+
+#########################################################
+
+- name: Config Ceilometer - /etc/ceilometer/ceilometer.conf
+  template:
+    src: "ceilometer.conf.j2"
+    dest: "/etc/ceilometer/ceilometer.conf"
+    owner: root
+    group: ceilometer
+    mode: '0640'
+    backup: yes
+  notify: Restart Ceilometer Service - Compute
+
+- name: Ensure Ceilometer Service Running - Compute
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - openstack-ceilometer-compute
+

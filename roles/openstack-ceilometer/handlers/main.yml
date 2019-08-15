@@ -1,0 +1,20 @@
+---
+# handlers file for openstack-ceilometer
+
+- name: Restart Ceilometer Service - Controller
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - openstack-ceilometer-central
+    - openstack-ceilometer-notification
+    #- openstack-gnocchi-api
+    #- openstack-gnocchi-metricd
+
+- name: Restart Ceilometer Service - Compute
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - openstack-ceilometer-compute
+

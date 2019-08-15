@@ -1,0 +1,178 @@
+---
+# defaults file for openstack-neutron-network
+
+neutron_network:
+  external_network:
+    name: "external-network"
+    provider_physical_network: "external"
+    provider_network_type: "flat"
+    mtu: "{{ global.network.neutron.mtu.global }}"
+    subnet:
+      name: "external-subnet"
+      network: "external-network"
+      subnet_range: "192.168.0.0/24"
+      allocation_pool: "start=192.168.0.101,end=192.168.0.200"
+      gateway: "192.168.0.1"
+      dhcp: False
+  demo_network:
+    name: "demo-network"
+    provider_network_type: "vxlan"
+    subnet:
+      name: "demo-subnet"
+      network: "demo-network"
+      router: "demo-router"
+      subnet_range: "10.0.0.0/24"
+      gateway: "10.0.0.1"
+      dhcp: True
+      dns:
+        - 8.8.8.8
+        - 8.8.4.4
+
+ml2_conf:
+  conf:
+    default:
+    l2pop:
+    ml2:
+      type_drivers: flat,vxlan
+      tenant_network_types: vxlan
+      mechanism_drivers: "openvswitch,l2population"
+      extension_drivers: port_security
+      path_mtu: "{{ global.network.neutron.mtu.path }}"
+    ml2_type_flat:
+      flat_networks: external
+    ml2_type_geneve:
+    ml2_type_gre:
+    ml2_type_vlan:
+    ml2_type_vxlan:
+      vni_ranges: "1:1000"
+    securitygroup:
+      firewall_driver: iptables_hybrid
+      enable_ipset: true
+
+dhcp_agent:
+  dnsmasq_log_file_path: "/var/log/neutron/dnsmasq.log"
+  conf:
+    default:
+      interface_driver: openvswitch
+      enable_isolated_metadata: True
+      force_metadata: True
+      enable_metadata_networki: True
+      dnsmasq_config_file: /etc/neutron/dnsmasq-neutron.conf
+    agent:
+    ovs:
+
+l3_agent:
+  conf:
+    default:
+      interface_driver: neutron.agent.linux.interface.OVSInterfaceDriver
+      external_network_bridge:
+      agent_mode: "{% if inventory_hostname in groups['openstack-compute'] %}dvr{% else %}dvr_snat{% endif %}"
+    agent:
+    ovs:
+
+metadata_agent:
+  conf:
+    default:
+      nova_metadata_host: "{{ global.haproxy.fqdn }}"
+      metadata_proxy_shared_secret: "{{ global.openstack.neutron.metadata_proxy_shared_secret }}"
+    agent:
+    cache:
+
+metering_agent:
+  conf:
+    default:
+      driver: neutron.services.metering.drivers.iptables.iptables_driver.IptablesMeteringDriver
+      interface_driver: neutron.agent.linux.interface.OVSInterfaceDriver
+      measure_interval: 60
+      report_interval: 300
+    agent:
+    ovs:
+
+openvswitch_agent:
+  conf:
+    default:
+    agent:
+      tunnel_types: vxlan
+      enable_distributed_routing: True
+      l2_population: True
+      arp_responder: True
+    ovs:
+      local_ip: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.network.tunnel.phy_interface)].ipv4.address }}"
+      bridge_mappings: "external:{{ global.network.external.bridge_name }}"
+    securitygroup:
+      firewall_driver: iptables_hybrid
+
+neutron:
+  endpoint:
+    - { region: "{{ global.openstack.neutron.service.region }}", type: "{{ global.openstack.neutron.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.neutron }}", interface: "admin", service: "{{ global.openstack.neutron.service.name }}" }
+    - { region: "{{ global.openstack.neutron.service.region }}", type: "{{ global.openstack.neutron.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.neutron }}", interface: "internal", service: "{{ global.openstack.neutron.service.name }}" }
+    - { region: "{{ global.openstack.neutron.service.region }}", type: "{{ global.openstack.neutron.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.neutron }}", interface: "public", service: "{{ global.openstack.neutron.service.name }}" }
+  conf:
+    default:
+      log_dir: /var/log/neutron
+      bind_host: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.neutron.listen_interface)].ipv4.address }}"
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      core_plugin: ml2
+      service_plugins:
+        - neutron.services.l3_router.l3_router_plugin.L3RouterPlugin
+        - metering
+      allow_overlapping_ips: True
+      router_distributed: True
+      auth_strategy: keystone
+      notify_nova_on_port_status_changes: True
+      notify_nova_on_port_data_changes: True
+      global_physnet_mtu: "{{ global.network.neutron.mtu.global }}"
+      advertise_mtu: true
+      l3_ha: True
+      allow_automatic_l3agent_failover: True
+      max_l3_agents_per_router: 2
+      min_l3_agents_per_router: 2
+      dhcp_agents_per_network: 2
+    agent:
+      root_helper: "sudo /usr/bin/neutron-rootwrap /etc/neutron/rootwrap.conf"
+    cors:
+    cors_subdomain:
+    database:
+      connection: "mysql+pymysql://{{ global.openstack.neutron.db_user }}:{{ global.openstack.neutron.db_pass }}@{{ global.haproxy.fqdn }}/neutron"
+    keystone_authtoken:
+      www_authenticate_uri: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      memcached_servers: "{% for host in groups['memcached'] %}{{ host }}:{{ global.memcached.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      auth_type: password
+      project_domain_name: "{{ global.openstack.domain.default.name }}"
+      user_domain_name: "{{ global.openstack.domain.default.name }}"
+      project_name: "{{ global.openstack.neutron.service.project }}"
+      region_name: "{{ global.openstack.neutron.service.region }}"
+      username: neutron
+      password: "{{ global.openstack.neutron.service.pass }}"
+    matchmaker_redis:
+    nova:
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      auth_type: password
+      project_domain_name: "{{ global.openstack.domain.default.name }}"
+      user_domain_name: "{{ global.openstack.domain.default.name }}"
+      region_name: "{{ global.openstack.nova.api.service.region }}"
+      project_name: "{{ global.openstack.nova.api.service.project }}"
+      username: nova
+      password: "{{ global.openstack.nova.api.service.pass }}"
+    oslo_concurrency:
+      lock_path: /var/lib/neutron/tmp
+    oslo_messaging_amqp:
+    oslo_messaging_notifications:
+      driver: messagingv2
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+    oslo_messaging_rabbit:
+    oslo_messaging_zmq:
+    oslo_middleware:
+    oslo_policy:
+    qos:
+    quotas:
+      default_quota: -1
+      quota_network: -1
+      quota_subnet: -1
+      quota_port: -1
+      quota_router: -1
+      quota_floatingip: -1
+      quota_security_group: -1
+      quota_security_group_rule: -1
+    ssl:

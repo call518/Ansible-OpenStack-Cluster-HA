@@ -1,0 +1,7 @@
+---
+# handlers file for openstack-horizon
+
+- name: Restart HTTPd Service
+  systemd:
+    name: httpd
+    state: restarted

@@ -1,0 +1,72 @@
+---
+# tasks file for haproxy
+
+### Setup 'xinetd' Service for Monitoring Galera Cluster
+
+- name: Create MySQL User for Monitoring Galera Cluster
+  mysql_user:
+    name: "{{ xinetd.check_script.db_user }}"
+    password: "{{ xinetd.check_script.db_pass }}"
+    host: "{{ item }}"
+    priv: '*.*:PROCESS'
+    state: present
+  with_items:
+    - "localhost"
+  run_once: yes
+  #when: inventory_hostname == random_host
+
+- name: Install Galera Cluster Check-Script
+  template:
+    src: "{{ xinetd.check_script.file_name }}.j2"
+    dest: "{{ xinetd.check_script.file_path }}/{{ xinetd.check_script.file_name }}"
+    owner: root
+    group: root
+    mode: '0755'
+    backup: yes
+
+- name: Install xinetd for Monitoring Galera Cluster
+  yum:
+    name: xinetd
+    state: installed
+
+- name: Config xinetd Service for Monitoring Galera Cluster
+  template:
+    src: etc-xinetd.d-monitor-galera.j2
+    dest: /etc/xinetd.d/monitor-galera
+    owner: root
+    group: root
+    mode: '0600'
+  register: config_xinetd_monitor_galera
+
+- name: Config /etc/services - Comment-Out Old 9200(all)
+  replace:
+    path: /etc/services
+    regexp: '(^wap-wsp)(.\s+{{ global.haproxy.galera_xinet_check_port }})'
+    replace: '#\1\2'
+    backup: yes
+  register: config_etc_services_1
+
+- name: Config /etc/services - Add New 9200/tcp
+  lineinfile:
+    path: /etc/services
+    insertafter: '^#wap-wsp.\s+{{ global.haproxy.galera_xinet_check_port }}/udp'
+    line: "galera-check {{ global.haproxy.galera_xinet_check_port }}/tcp # galera-check"
+    state: present
+    backup: yes
+  register: config_etc_services_2
+
+- name: Ensure xinetd Service Running
+  systemd:
+    name: xinetd
+    state: started
+    enabled: yes
+
+- name: Restart xinetd Service
+  systemd:
+    name: xinetd
+    #daemon_reload: yes
+    state: restarted
+  when: config_xinetd_monitor_galera.changed == True or config_etc_services_1.changed == True or config_etc_services_2 == True
+
+
+#######################################################

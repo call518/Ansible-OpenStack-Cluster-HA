@@ -1,0 +1,46 @@
+---
+rabbitmq_rpm_url: "https://www.rabbitmq.com/releases/rabbitmq-server/v3.6.15/rabbitmq-server-3.6.15-1.el7.noarch.rpm"
+
+rabbitmq_erlang_cookie: VSJXOPRBRCOGHTBPYYZP
+rabbitmq_interface_address: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.rabbitmq.interface)].ipv4.address }}"
+
+rabbitmq_management_interface_address: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.rabbitmq.management.interface)].ipv4.address }}"
+
+kernel_inet_interface: "{{ global.rabbitmq.conf.kernel_inet_interface }}"
+kernel_inet_dist_listen_min: 45000
+kernel_inet_dist_listen_max: 45010
+
+rabbitmq_env_ulimit_open_files: 4096
+rabbitmq_env_home: /var/lib/rabbitmq
+rabbitmq_env_log_base: /var/log/rabbitmq
+rabbitmq_env_mnesia_base: /var/lib/rabbitmq/mnesia
+rabbitmq_env_epmd_port: 4369
+rabbitmq_env_node_port: 5672
+rabbitmq_env_use_longname: 'false'
+rabbitmq_env_io_thread_pool_size: 128
+
+#config_cluster_node: "\"rabbit@{{ groups['rabbitmq-cluster'] | map('quote') | join('\", \"rabbit@') }}\""
+config_cluster_node: "{% for node in groups['rabbitmq-cluster'] %}'rabbit@{{ node }}'{% if not loop.last %}, {%endif %}{% endfor %}"
+config_cluster_partition_handling: pause_minority
+config_heartbeat: 30
+config_vm_memory_high_watermark: 0.5
+config_tcp_listeners_ip: "{{ rabbitmq_interface_address }}"
+config_tcp_listeners_port: 5672
+config_background_gc_enabled: true
+config_num_tcp_acceptors: 10
+config_connection_max: infinity
+config_tcp_listen_options_backlog: 4096
+config_tcp_listen_options_buffer: 1024
+config_tcp_listen_options_sndbuf: 1024
+config_tcp_listen_options_recbuf: 1024
+config_collect_statistics_interval: 1000
+config_rates_mode: basic
+
+rabbitmq_plugins:
+  - amqp_client
+  - rabbitmq_management
+#  - prometheus_process_collector
+#  - prometheus_rabbitmq_exporter
+
+rabbitmq_admin_user_name: admin
+rabbitmq_admin_user_pass: 1234

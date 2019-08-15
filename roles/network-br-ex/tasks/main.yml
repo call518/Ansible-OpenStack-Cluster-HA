@@ -1,0 +1,6 @@
+---
+# tasks file for network-br-ex
+
+- import_tasks: setup-br-ex.yml
+  tags:
+    - network-br-ex

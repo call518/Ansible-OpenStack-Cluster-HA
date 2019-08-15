@@ -1,0 +1,5 @@
+sysctl_file: "/etc/sysctl.d/50-rabbitmq.conf"
+sysctl_config:
+  - token: "vm.swappiness"
+    value: "{{ global.rabbitmq.sysctl.vm_swappiness }}"
+    comment: "for RabbitMQ"

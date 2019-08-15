@@ -1,0 +1,171 @@
+---
+- name: Install EPEL Repository
+  yum:
+    name: "epel-release"
+    state: installed
+
+- name: Install RabbitMQ Server
+  yum:
+    name: "{{ rabbitmq_rpm_url }}"
+    state: installed 
+
+###########################
+
+#- name: Backup Old Erlang Cookie
+#  shell: cp -a /var/lib/rabbitmq/.erlang.cookie /var/lib/rabbitmq/.erlang.cookie.old
+#  changed_when: false
+
+- name: Create RabbitMQ Erlang Cookie
+  template:
+    src: erlang.cookie.j2
+    dest: /var/lib/rabbitmq/.erlang.cookie
+    owner: rabbitmq
+    group: rabbitmq
+    mode: 0400
+  #notify: stop rabbitmq-server
+
+- name: Start RabbitMQ Service
+  systemd:
+    name: rabbitmq-server
+    state: started
+    enabled: yes
+
+############################
+
+- name: Config RabbitMQ
+  template:
+    src: "rabbitmq.config.j2"
+    dest: "/etc/rabbitmq/rabbitmq.config"
+    owner: rabbitmq
+    group: rabbitmq
+    mode: 0600
+    backup: yes
+  register: config_rabbitmq
+
+- name: Config RabbitMQ-Env
+  template:
+    src: "rabbitmq-env.conf.j2"
+    dest: "/etc/rabbitmq/rabbitmq-env.conf"
+    owner: rabbitmq
+    group: rabbitmq
+    mode: 0600
+    backup: yes
+  register: config_rabbitmq_env
+
+- name: Config RabbitMQ-Plugins
+  template:
+    src: "enabled_plugins.j2"
+    dest: "/etc/rabbitmq/enabled_plugins"
+    owner: rabbitmq
+    group: rabbitmq
+    mode: 0600
+    backup: yes
+  register: config_rabbitmq_plugins
+
+- name: "Restart RabbitMQ by Updating Config"
+  systemd:
+    name: rabbitmq-server
+    state: restarted
+    daemon_reload: yes
+  when:  config_rabbitmq.changed == true or config_rabbitmq_env.changed == true or config_rabbitmq_plugins.changed == true
+
+############################
+
+- name: List Cluster Status (for checking if node is already joined to cluster)
+  shell: rabbitmqctl cluster_status
+  register: list_cluster_status
+  changed_when: false
+  #when: inventory_hostname == groups['rabbitmq-cluster'][0]
+  run_once: yes
+
+- name: Stop App (on Non-Master-Nodes)
+  shell: |
+    rabbitmqctl stop_app
+  when: inventory_hostname not in list_cluster_status.stdout
+  register: stop_rabbitmq
+
+- name: Join to Cluster (on Non-Master Nodes)
+  shell: |
+    rabbitmqctl join_cluster rabbit@{{ groups['rabbitmq-cluster'][0] }};
+  when: stop_rabbitmq.changed == true
+
+- name: Start App (on Non-Master Nodes)
+  shell: |
+    rabbitmqctl start_app
+  when: stop_rabbitmq.changed == true
+
+############################
+
+- name: List Users (for Remove guest User)
+  shell: rabbitmqctl list_users
+  register: list_users_for_guest
+  changed_when: false
+  #when: inventory_hostname == groups['rabbitmq-cluster'][0]
+  run_once: yes
+
+- name: Delete guest User
+  shell: rabbitmqctl delete_user guest
+  register: delete_guest_user
+  failed_when: delete_guest_user.rc != 0
+  run_once: yes
+  when: '"guest" in list_users_for_guest.stdout'
+
+- name: List Users (for Add Admin User)
+  shell: rabbitmqctl list_users
+  register: list_users_for_admin
+  changed_when: false
+  run_once: yes
+
+- name: Create Admin User
+  shell: rabbitmqctl add_user "{{rabbitmq_admin_user_name}}" "{{rabbitmq_admin_user_pass}}"
+  register: create_admin_user
+  failed_when: create_admin_user.rc != 70 and create_admin_user.rc != 0
+  changed_when: create_admin_user.rc != 70
+  run_once: yes
+  when: rabbitmq_admin_user_name not in list_users_for_admin.stdout
+
+- name: Set Permissions for Admin User on '/' vhost
+  shell: rabbitmqctl set_permissions "{{rabbitmq_admin_user_name}}" ".*" ".*" ".*"
+  run_once: yes
+  when: create_admin_user.changed == true
+
+- name: Set Tag administrator to Admin User
+  shell: rabbitmqctl set_user_tags "{{rabbitmq_admin_user_name}}" administrator
+  run_once: yes
+  when: create_admin_user.changed == true
+
+- name: List Users (for Add OpenStack User)
+  shell: rabbitmqctl list_users
+  register: list_users_for_openstack
+  changed_when: false
+  run_once: yes
+
+- name: Create OpenStck User
+  shell: rabbitmqctl add_user "{{global.rabbitmq.openstack_user_name}}" "{{global.rabbitmq.openstack_user_pass}}"
+  register: create_openstack_user
+  failed_when: create_openstack_user.rc != 70 and create_openstack_user.rc != 0
+  changed_when: create_openstack_user.rc != 70
+  run_once: yes
+  when: global.rabbitmq.openstack_user_name not in list_users_for_openstack.stdout
+
+- name: Set Permissions for OpenStack User on '/' vhost
+  shell: rabbitmqctl set_permissions "{{global.rabbitmq.openstack_user_name}}" ".*" ".*" ".*"
+  run_once: yes
+  when: create_openstack_user.changed == true
+
+############################
+
+- name: List Policies (for checking if ha-mode is already enabled)
+  shell: rabbitmqctl list_policies
+  register: list_policies
+  changed_when: false
+  run_once: yes
+
+- name: Set ha-mode to all for all queues for backup
+  #shell: rabbitmqctl set_policy ha-exactly-two ".*" '{"ha-mode":"exactly","ha-params":2,"ha-sync-mode":"automatic"}'
+  shell: rabbitmqctl set_policy ha-all ".*" '{"ha-mode":"all","ha-sync-mode":"automatic"}'
+  register: set_policy
+  failed_when: set_policy.rc != 0
+  run_once: yes
+  when: list_policies.stdout.find("ha-all") == -1
+

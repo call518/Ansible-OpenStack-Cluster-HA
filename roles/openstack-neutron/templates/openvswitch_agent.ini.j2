@@ -1,0 +1,11 @@
+[DEFAULT]
+[agent]
+tunnel_types = {{ openvswitch_agent.conf.agent.tunnel_types }}
+enable_distributed_routing = {{ openvswitch_agent.conf.agent.enable_distributed_routing }}
+l2_population = {{ openvswitch_agent.conf.agent.l2_population }}
+arp_responder = {{ openvswitch_agent.conf.agent.arp_responder }}
+[ovs]
+local_ip = {{ openvswitch_agent.conf.ovs.local_ip }}
+bridge_mappings = {{ openvswitch_agent.conf.ovs.bridge_mappings }}
+[securitygroup]
+firewall_driver = {{ openvswitch_agent.conf.securitygroup.firewall_driver }}

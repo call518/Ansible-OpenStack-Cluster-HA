@@ -1,0 +1,87 @@
+---
+# tasks file for network-br-ex
+
+- name: Install OVS Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openvswitch
+      - libibverbs
+
+- name: Ensure OVS Service Running
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - openvswitch
+
+#########################################################
+
+- name: Config Interface - ifcfg-br-ex
+  template:
+    src: "ifcfg-br-ex.j2"
+    dest: "{{ network_conf_dir }}/ifcfg-br-ex"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  #when: ansible_br_ex is not defined or ansible_br_ex.active != True
+  #when: vars['ansible_' + fact_external_bridge_interface_name] is not defined or vars['ansible_' + fact_external_bridge_interface_name].active != True
+  #when: vars[fact_external_bridge_interface_name] is not defined or vars[fact_external_bridge_interface_name].active != True
+  #when: vars[fact_external_bridge_interface_name] is not defined
+  notify: Restart Network Service
+
+- name: Config Interface - ifcfg-ethX
+  template:
+    src: "ifcfg-ethX.j2"
+    dest: "{{ network_conf_dir }}/ifcfg-{{ external_bridge.ifcfg_ethX.device }}"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  #when: vars[fact_external_bridge_interface_name] is not defined or vars[fact_external_bridge_interface_name].active != True
+  #when: vars[fact_external_bridge_interface_name] is not defined
+  notify: Restart Network Service
+
+#- name: Config Interface - ifcfg-br-ex (Repeat)
+#  template:
+#    src: "ifcfg-br-ex.j2"
+#    dest: "{{ network_conf_dir }}/ifcfg-{{ external_bridge.ifcfg_br_ex.device }}"
+#    owner: root
+#    group: root
+#    mode: '0644'
+#    backup: yes
+#  #when: vars[fact_external_bridge_interface_name] is defined and vars[fact_external_bridge_interface_name].active == True and vars[fact_external_bridge_interface_name].ipv4.address is defined
+#  when: vars[fact_external_bridge_interface_name] is defined
+#  notify: Restart Network Service
+#
+#- name: Config Interface - ifcfg-ethX (Repeat)
+#  template:
+#    src: "ifcfg-ethX.j2"
+#    dest: "{{ network_conf_dir }}/ifcfg-{{ external_bridge.ifcfg_ethX.device }}"
+#    owner: root
+#    group: root
+#    mode: '0644'
+#    backup: yes
+#  #when: vars[fact_external_bridge_interface_name] is defined and vars[fact_external_bridge_interface_name].active == True
+#  when: vars[fact_external_bridge_interface_name] is defined
+#  notify: Restart Network Service
+
+#########################################################
+
+## Restart Networking Immediatly
+- meta: flush_handlers
+
+#- debug: var=network_restart
+
+- name: Waiting for Network Connection........
+  wait_for_connection:
+    connect_timeout: 10
+    sleep: 5
+    delay: 5
+    timeout: 600
+  when: network_restart is defined and network_restart.changed == True
+

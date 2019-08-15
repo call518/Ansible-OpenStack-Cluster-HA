@@ -1,0 +1,7 @@
+---
+- hosts:
+    - openstack-controller
+    - openstack-network
+    - openstack-compute
+  roles:
+    - chrony-ntp

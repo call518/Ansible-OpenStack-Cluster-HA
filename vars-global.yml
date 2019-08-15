@@ -1,0 +1,304 @@
+---
+#random_host: "{{ groups['openstack-controller'] | random }}"
+
+####################################################
+
+global:
+  galera:
+    root_user: root
+    root_pass: 1234
+    bootstrap_group_index: 0
+    listen_interface: eth0
+    sysctl:
+      fs_nr_open: 2000000
+      fs_file_max: 2000000
+      vm_swappiness: 0
+    ulimit:
+      nofile: 2000000
+      nproc: 4194303
+    systemd:
+      limitnofile: 200000
+  haproxy:
+    fqdn: "haproxy-vip"
+    vip:  "203.245.31.119"
+    stats:
+      interface: eth0
+    galera_xinet_check_port: 9200
+    sysctl:
+      net_ipv4_ip_nonlocal_bind: 1
+  rabbitmq:
+    interface: eth0
+    openstack_user_name: openstack
+    openstack_user_pass: 1234
+    management:
+      interface: eth0
+      port: 15672
+    conf:
+      kernel_inet_interface: eth0
+    sysctl:
+      vm_swappiness: 0
+  novnc:
+    interface: eth0
+  memcached:
+    interface: eth0
+    port: 11211
+  zookeeper:
+    interface: eth0
+    port: 2181
+  openstack:
+    domain:
+      default:
+        id: default
+        name: Default
+    service_port:
+      galera: 3306
+      horizon: 80
+      keystone: 5000
+      glance:
+        api: 9292
+        registry: 9191
+      cinder: 8776
+      nova:
+        api: 8774
+        placement: 8778
+        metadata: 8775
+        novncproxy: 6080
+      neutron: 9696
+      gnocchi: 8041
+      aodh: 8042
+      heat_api: 8004
+      heat_api_cfn: 8000
+      octavia:
+        api: 9876
+        health_manager: 5555
+        agent: 9443
+      barbican: 9311
+    horizon:
+      listen_interface: eth0
+      web_root: "/dashboard"
+    keystone:
+      db_user: keystone
+      db_pass: 1234
+      service:
+        name: keystone
+        type: identity
+        user: admin
+        pass: 1234
+        project: service
+        role: admin
+        region: RegionOne
+      listen_interface: eth0
+      api:
+        version: 3
+      demo_user_pass: 1234
+    glance:
+      db_user: glance
+      db_pass: 1234
+      service:
+        name: glance
+        type: image
+        user: glance
+        pass: 1234
+        project: service
+        role: admin
+        region: RegionOne
+      listen_interface: eth0
+      api:
+        version: 2
+      registry:
+    cinder:
+      db_user: cinder
+      db_pass: 1234
+      service:
+        name: cinder
+        type: volume
+        user: cinder
+        pass: 1234
+        project: service
+        role: admin
+        region: RegionOne
+      listen_interface: eth0
+      api:
+        for_horizon: 2
+    nova:
+      listen_interface: eth0
+      api:
+        version: 2.1
+        db_user: nova
+        db_pass: 1234
+        service:
+          name: nova
+          type: compute
+          user: nova
+          pass: 1234
+          project: service
+          role: admin
+          region: RegionOne
+      placement:
+        db_user: placement
+        db_pass: 1234
+        service:
+          name: placement
+          type: placement
+          user: placement
+          pass: 1234
+          project: service
+          role: admin
+          region: RegionOne
+      metadata:
+    neutron:
+      db_user: neutron
+      db_pass: 1234
+      service:
+        name: neutron
+        type: network
+        user: neutron
+        pass: 1234
+        project: service
+        role: admin
+        region: RegionOne
+      listen_interface: eth0
+      metadata_proxy_shared_secret: 4d073aed10595f0b3262
+    gnocchi:
+      db_user: gnocchi
+      db_pass: 1234
+      service:
+        name: gnocchi
+        type: metric
+        user: gnocchi
+        pass: 1234
+        project: service
+        role: admin
+        region: RegionOne
+      listen_interface: eth0
+      storage_type: ceph # 'file' or 'ceph'
+    ceilometer:
+      db_user: ceilometer
+      db_pass: 1234
+      service:
+        name: ceilometer
+        type: metering
+        user: ceilometer
+        pass: 1234
+        project: service
+        role: admin
+        region: RegionOne
+      listen_interface: eth0
+    aodh:
+      db_user: aodh
+      db_pass: 1234
+      service:
+        name: aodh
+        type: alarming
+        user: aodh
+        pass: 1234
+        project: service
+        role: admin
+        region: RegionOne
+      listen_interface: eth0
+    heat:
+      db_user: heat
+      db_pass: 1234
+      service:
+        name: heat
+        type: orchestration
+        user: heat
+        pass: 1234
+        project: service
+        role: admin
+        region: RegionOne
+      listen_interface: eth0
+      domain_admin:
+        user: heat_domain_admin
+        pass: 1234
+        role: admin
+    heat_cfn:
+      service:
+        name: heat-cfn
+        type: cloudformation
+        region: RegionOne
+    octavia:
+      db_user: octavia
+      db_pass: 1234
+      service:
+        name: octavia
+        type: load-balancer
+        user: octavia
+        pass: 1234
+        project: service
+        role: admin
+        region: RegionOne
+      listen_interface: eth0
+      mgmt_interface: o-hm0
+    barbican:
+      db_user: barbican
+      db_pass: 1234
+      service:
+        name: barbican
+        type: key-manager
+        user: barbican
+        pass: 1234
+        project: service
+        role: admin
+        region: RegionOne
+      listen_interface: eth0
+      simple_crypto_plugin:
+        key: "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="
+
+  ceph:
+    #release: nautilus
+    release: mimic
+    #release: luminous
+    admin_privilges: true
+    fsid: "14282063-8286-4bac-af17-9b5711a9d06c"
+    network:
+      public:
+        interface: eth0
+      cluster:
+        interface: eth0
+    auth_key:
+      admin: "AQAMvxBdIDNlBRAARlr9FMeHe8JO73Bn/SW86A=="
+      glance: "AQAcvxBdNGxiAhAAKzwSkowUkb1qAv2uZpwsZQ=="
+      cinder: "AQAcvxBdXhE0DxAAAzMN5FgvcNQBHjmT378CAQ=="
+      cinder_backup: "AQAcvxBd1YYnHBAADdeJtGAVVzWFuG3pojQLag=="
+      gnocchi: "AQD5lhddkdk9MRAA2NSuSmcnvbtd/HrbPG7Zkw=="
+    libvirtd:
+      secret:
+        uuid: "7d88a789-5096-45e7-a534-0ac631a4e4bf"
+        usage_type: "ceph"
+        name: "client.cinder secret"
+        xml_file_path: "/root/secret.xml"
+
+  network:
+    external:
+      bridge_name: br-ex
+      phy_interface: eth1
+      mtu:
+        br_ex: 1400
+        ethX: 1400
+    tunnel:
+      phy_interface: eth2
+    neutron:
+      mtu:
+        global: 1400
+        path: 1300
+
+  default_class_quota:
+    - { key: "backup-gigabytes", value: "1000" }
+    - { key: "backups", value: "20" }
+    - { key: "cores", value: "30" }
+    - { key: "fixed-ips", value: "-1" }
+    - { key: "floating-ips", value: "20" }
+    - { key: "gigabytes", value: "1000" }
+    - { key: "injected-file-size", value: "10240" }
+    - { key: "injected-files", value: "5" }
+    - { key: "injected-path-size", value: "255" }
+    - { key: "instances", value: "20" }
+    - { key: "key-pairs", value: "100" }
+    - { key: "per-volume-gigabytes", value: "1000" }
+    - { key: "properties", value: "128" }
+    - { key: "ram", value: "51200" }
+    - { key: "secgroup-rules", value: "20" }
+    - { key: "secgroups", value: "10" }
+    - { key: "snapshots", value: "10" }
+    - { key: "volumes", value: "10" }

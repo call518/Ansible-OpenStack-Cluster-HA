@@ -1,0 +1,184 @@
+---
+# tasks file for openstack-cinder
+
+- name: Create MySQL Database - cinder
+  mysql_db:
+    name: cinder
+    state: present
+  run_once: yes
+
+- name: Create MySQL User - cinder
+  mysql_user:
+    name: "{{ global.openstack.cinder.db_user }}"
+    password: "{{ global.openstack.cinder.db_pass }}"
+    host: "{{ item }}"
+    priv: 'cinder.*:ALL'
+    state: present
+  with_items:
+    - "localhost"
+    - "%"
+  run_once: yes
+
+#########################################################
+
+- name: Install Cinder Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openstack-cinder
+
+#########################################################
+
+- name: Config CEPH Keyring - cinder
+  template:
+    src: "ceph.client.cinder.keyring.j2"
+    dest: "/etc/ceph/ceph.client.cinder.keyring"
+    owner: cinder
+    group: cinder
+    mode: '0644'
+    backup: yes
+
+- name: Config CEPH Keyring - cinder-backup
+  template:
+    src: "ceph.client.cinder-backup.keyring.j2"
+    dest: "/etc/ceph/ceph.client.cinder-backup.keyring"
+    owner: cinder
+    group: cinder
+    mode: '0644'
+    backup: yes
+
+#########################################################
+
+- name: Check Exist User - cinder
+  shell: |
+    openstack user show cinder
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_user_cinder
+
+- name: Create User - cinder
+  shell: |
+    openstack user create --domain {{ global.openstack.domain.default.id }} --password {{ global.openstack.cinder.service.pass }} cinder
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_user_cinder.rc != 0
+
+- name: Check Role-Assignment - cinder
+  shell: |
+    openstack role assignment list --user cinder --project {{ global.openstack.cinder.service.project }} --names -f value -c User
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_role_assignment_cinder
+
+- name: Assignment Role to User - cinder
+  shell: |
+    openstack role add --project {{ global.openstack.cinder.service.project }} --user cinder {{ global.openstack.cinder.service.role }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: '"cinder@" + global.openstack.domain.default.name not in check_role_assignment_cinder.stdout_lines'
+
+- name: Check Service - cinder::v2
+  shell: |
+    openstack service show cinderv2 -f value
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_service_cinder_v2
+
+- name: Create Service - cinder::v2
+  shell: |
+    openstack service create --name cinderv2 --description "OpenStack Block Storage" {{ global.openstack.cinder.service.type }}v2
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_service_cinder_v2.rc != 0
+
+- name: Check Service - cinder::v3
+  shell: |
+    openstack service show cinderv3 -f value
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_service_cinder_v3
+
+- name: Create Service - cinder::v3
+  shell: |
+    openstack service create --name cinderv3 --description "OpenStack Block Storage" {{ global.openstack.cinder.service.type }}v3
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_service_cinder_v3.rc != 0
+
+#########################################################
+
+- name: Check Exist EndPoint - cinder
+  shell: |
+    openstack endpoint list --service {{ item.service }} --interface {{ item.interface }} --region {{ item.region }} -f value -c 'Region' -c 'Service Name' -c 'Interface'
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  with_items: "{{ cinder.endpoint }}"
+  register: check_exist_endpoint
+
+- name: Create EndPoint - cinder
+  vars:
+    result_check_string: "{{ item.item.region }} {{ item.item.service }} {{ item.item.interface }}"
+  shell: |
+    openstack endpoint create --region {{ item.item.region }} {{ item.item.type }} {{ item.item.interface }} {{ item.item.url }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  with_items: "{{ check_exist_endpoint.results }}"
+  when: "result_check_string not in item.stdout_lines"
+
+#########################################################
+
+- name: Config Cron - Cinder Volume Usage Audit
+  cron:
+    name: "Cinder Volume Usage Audit"
+    user: root
+    #minute: "0"
+    minute: "*/5"
+    hour: "*"
+    day: "*"
+    month: "*"
+    weekday: "*"
+    #job: "(PYTHONIOENCODING=utf-8 /usr/bin/cinder-volume-usage-audit --send_actions" 1>> /var/log/cinder/cinder-volume-usage-audit_hourly_`date +\\%Y\\%m\\%d`.log 2>&1)"
+    job: "/usr/bin/cinder-volume-usage-audit --send_actions"
+
+#########################################################
+
+- name: Config Cinder - /etc/cinder/cinder.conf
+  template:
+    src: "cinder.conf.j2"
+    dest: "/etc/cinder/cinder.conf"
+    owner: root
+    group: cinder
+    mode: '0640'
+    backup: yes
+  notify: Restart Cinder Service
+
+- name: Create DB-Tables for Cinder
+  become: yes
+  become_user: cinder
+  shell: cinder-manage db sync
+  args:
+    executable: /bin/sh
+  run_once: yes
+
+- name: Ensure Cinder Service Running
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - openstack-cinder-api
+    - openstack-cinder-volume
+    - openstack-cinder-backup
+    - openstack-cinder-scheduler

@@ -1,0 +1,31 @@
+[
+  {rabbit,
+    [ 
+      {cluster_nodes, {[{{ config_cluster_node }}], disc}},
+      {queue_master_locator, <<"min-masters">>},
+      {cluster_partition_handling, {{ config_cluster_partition_handling }}},
+      {heartbeat, {{ config_heartbeat }}},
+      {vm_memory_high_watermark, {{ config_vm_memory_high_watermark }}},
+      {tcp_listeners, [{"{{ config_tcp_listeners_ip }}", {{ config_tcp_listeners_port }}}]},
+      %%{background_gc_enabled, {{ config_background_gc_enabled }}},
+      {num_tcp_acceptors, {{ config_num_tcp_acceptors }}},
+      {connection_max, {{ config_connection_max }}},
+      {collect_statistics_interval, {{ config_collect_statistics_interval }}},
+      {tcp_listen_options, [
+                              {backlog, {{ config_tcp_listen_options_backlog }}},
+                              {buffer, {{ config_tcp_listen_options_buffer }}},
+                              {sndbuf, {{ config_tcp_listen_options_sndbuf }}},
+                              {recbuf, {{ config_tcp_listen_options_recbuf }}}
+                           ]
+      },
+      {loopback_users, []}
+    ]
+  },
+  {rabbitmq_management, [
+    {listener, [{ip, "{{ rabbitmq_management_interface_address }}"}, {port, {{ global.rabbitmq.management.port }}}]}
+  ]},
+  {kernel, [
+    {inet_dist_listen_min, {{ kernel_inet_dist_listen_min }}},
+    {inet_dist_listen_max, {{ kernel_inet_dist_listen_max }}}
+  ]}
+].

@@ -1,0 +1,11 @@
+---
+# handlers file for network-br-ex
+
+- name: Restart Network Service
+  async: 120
+  poll: 0
+  systemd:
+    name: network
+    state: restarted
+  register: network_restart
+

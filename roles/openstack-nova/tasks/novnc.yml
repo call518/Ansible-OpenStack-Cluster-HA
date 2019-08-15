@@ -1,0 +1,33 @@
+---
+# tasks file for openstack-nova-compute
+
+- name: Install noVNC Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openstack-nova-novncproxy
+      - openstack-nova-console
+
+#########################################################
+
+- name: Config noVNC - /etc/nova/nova.conf
+  template:
+    src: "nova.conf.j2"
+    dest: "/etc/nova/nova.conf"
+    owner: root
+    group: nova
+    mode: '0640'
+    backup: yes
+  notify: Restart noVNC Service - noVNC
+
+- name: Ensure noVNC Service Running
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - openstack-nova-consoleauth
+    - openstack-nova-novncproxy
+

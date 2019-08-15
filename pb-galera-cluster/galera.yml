@@ -1,0 +1,11 @@
+---
+- hosts: galera-cluster
+  vars_files:
+    - "vars-global.yml"
+    - "vars-sysctl-mariadb.yml"
+  roles:
+    - { role: sysctl, tags: [ 'setup' ] }
+    - { role: galera_repos, tags: [ 'setup', 'packages' ] }
+    - { role: galera_packages, tags: [ 'setup', 'packages' ] }
+    - { role: galera_privs, tags: [ 'auth' ] }
+    - { role: galera_conf, tags: [ 'config' ] }

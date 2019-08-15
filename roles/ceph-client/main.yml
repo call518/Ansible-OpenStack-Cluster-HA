@@ -1,0 +1,10 @@
+---
+# tasks file for ceph-yum-repo
+
+- name: Config Yum Repo. for CEPH
+  template:
+    src: "ceph.repo.j2"
+    dest: "/etc/yum.repos.d/ceph.repo"
+    owner: root
+    group: root
+    mode: '0644'

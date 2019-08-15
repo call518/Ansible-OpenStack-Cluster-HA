@@ -1,0 +1,35 @@
+---
+env:
+  openstack:
+    admin_openrc:
+      OS_PROJECT_DOMAIN_NAME: '{{ global.openstack.domain.default.name }}'
+      OS_USER_DOMAIN_NAME: '{{ global.openstack.domain.default.name }}'
+      OS_PROJECT_NAME: '{{ global.openstack.keystone.service.project }}'
+      OS_USERNAME: '{{ global.openstack.keystone.service.user }}'
+      OS_PASSWORD: '{{ global.openstack.keystone.service.pass }}'
+      OS_AUTH_URL: 'http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}'
+      OS_IDENTITY_API_VERSION: '{{ global.openstack.keystone.api.version }}'
+      OS_IMAGE_API_VERSION: '{{ global.openstack.glance.api.version }}'
+      OS_AUTH_TYPE: 'password'
+
+    demo_openrc:
+      OS_PROJECT_DOMAIN_NAME: '{{ global.openstack.domain.default.name }}'
+      OS_USER_DOMAIN_NAME: '{{ global.openstack.domain.default.name }}'
+      OS_PROJECT_NAME: 'demo'
+      OS_USERNAME: 'demo'
+      OS_PASSWORD: '{{ global.openstack.keystone.demo_user_pass }}'
+      OS_AUTH_URL: 'http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}'
+      OS_IDENTITY_API_VERSION: '{{ global.openstack.keystone.api.version }}'
+      OS_IMAGE_API_VERSION: '{{ global.openstack.glance.api.version }}'
+      OS_AUTH_TYPE: 'password'
+
+    octavia_openrc:
+      OS_PROJECT_DOMAIN_NAME: '{{ global.openstack.domain.default.name }}'
+      OS_USER_DOMAIN_NAME: '{{ global.openstack.domain.default.name }}'
+      OS_PROJECT_NAME: '{{ global.openstack.octavia.service.project }}'
+      OS_USERNAME: '{{ global.openstack.octavia.service.user }}'
+      OS_PASSWORD: '{{ global.openstack.octavia.service.pass }}'
+      OS_AUTH_URL: 'http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}'
+      OS_IDENTITY_API_VERSION: '{{ global.openstack.keystone.api.version }}'
+      OS_IMAGE_API_VERSION: '{{ global.openstack.glance.api.version }}'
+      OS_AUTH_TYPE: 'password'

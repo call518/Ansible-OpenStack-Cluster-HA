@@ -1,0 +1,27 @@
+heat_template_version: 2015-10-15
+description: Launch a basic instance with CirrOS image using the
+            ``m1.tiny`` flavor, ``mykey`` key, and one network.
+
+parameters:
+ NetID:
+   type: string
+   description: Network ID to use for the instance.
+   default: "5b81fcb6-9019-45aa-925d-271d1b34eae0"
+
+resources:
+ server:
+   type: OS::Nova::Server
+   properties:
+     image: "cirros-0.4.0-i386-disk.img"
+     flavor: "m1.tiny"
+     key_name: "ansible-test-key"
+     networks:
+     - network: { get_param: NetID }
+
+outputs:
+ instance_name:
+   description: Name of the instance.
+   value: { get_attr: [ server, name ] }
+ instance_ip:
+   description: IP address of the instance.
+   value: { get_attr: [ server, first_address ] }

@@ -1,0 +1,139 @@
+---
+# defaults file for openstack-octavia
+
+octavia:
+  endpoint:
+    - { region: "{{ global.openstack.octavia.service.region }}", type: "{{ global.openstack.octavia.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.octavia.api }}", interface: "admin", service: "{{ global.openstack.octavia.service.name }}" }
+    - { region: "{{ global.openstack.octavia.service.region }}", type: "{{ global.openstack.octavia.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.octavia.api }}", interface: "internal", service: "{{ global.openstack.octavia.service.name }}" }
+    - { region: "{{ global.openstack.octavia.service.region }}", type: "{{ global.openstack.octavia.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.octavia.api }}", interface: "public", service: "{{ global.openstack.octavia.service.name }}" }
+  mgmt_ssh_key:
+    name: octavia_ssh_key
+    dir_path: /etc/octavia/.ssh
+    tmp_path: /tmp/octavia-mgmt-ssh-key
+  mgmt_network:
+    name: lb-mgmt-net
+    provider_network_type: vxlan
+    share: "--no-share"
+    subnet:
+      - { name: "lb-mgmt-subnet-0", subnet_range: "10.200.0.0/24", allocation_pool: "start=10.200.0.10,end=10.200.0.250", dns: "8.8.4.4", dhcp: False }
+      #- { name: "lb-mgmt-subnet-1", subnet_range: "10.200.1.0/24", allocation_pool: "start=10.200.1.10,end=10.200.1.250", dns: "8.8.4.4", dhcp: False }
+    security_group:
+      name: "lb-mgmt-sec-grp"
+      rule:
+        - { description: "SSH", protocol: "tcp", dst_port: "22:22", remote_ip: "0.0.0.0/0" }
+        - { description: "Health Manager", protocol: "udp", dst_port: "{{ global.openstack.service_port.octavia.health_manager }}:{{ global.openstack.service_port.octavia.health_manager }}", remote_ip: "0.0.0.0/0" }
+        - { description: "Amphora Agent", protocol: "tcp", dst_port: "{{ global.openstack.service_port.octavia.agent }}:{{ global.openstack.service_port.octavia.agent }}", remote_ip: "0.0.0.0/0" }
+        - { description: "PING", protocol: "icmp", dst_port: "-1", remote_ip: "0.0.0.0/0" }
+  mgmt_port:
+    name: "octavia-mgmt-port"
+    interface: "{{ global.openstack.octavia.mgmt_interface }}"
+    dhclient_conf_path: /etc/octavia/octavia-dhclient.conf
+  certificates:
+    script_path: "/root/certificates"
+    certs_path: "/etc/octavia/certs"
+    tmp_path: "/tmp/octavia-certs"
+
+  amphora:
+    image:
+      mirror: "http://172.16.0.18"
+      file_name: "amphora-ubuntu-i386-haproxy.raw.tgz"
+      is_tgz: True
+      disk_format: "raw"
+      container_format: "bare"
+    flavor:
+      name: "amphora.loadbalancer"
+      id: 10000
+      vcpus: 2
+      ram: 2048
+      disk: 10
+
+  conf:
+    default:
+      log_dir: /var/log/octavia
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+    api_settings:
+      bind_host: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.octavia.listen_interface)].ipv4.address }}"
+      bind_port: 9876
+    database:
+      #connection: mysql+pymysql://octavia:8665f9aaebc29e441277@dev-r2controller-001.hanpda.com/octavia
+      connection: "mysql+pymysql://{{ global.openstack.octavia.db_user }}:{{ global.openstack.octavia.db_pass }}@{{ global.haproxy.fqdn }}/octavia"
+    health_manager:
+      event_streamer_driver: queue_event_streamer
+      sync_provisioning_status: True
+      heartbeat_key: insecure
+      bind_port: "{{ global.openstack.service_port.octavia.health_manager }}"
+      #bind_ip: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.octavia.listen_interface)].ipv4.address }}"
+      #controller_ip_port_list: "{{ groups['openstack-network'] | map('extract', hostvars, [global.openstack.octavia.listen_interface,'ipv4','address']) | list | join(',') }}"
+      #controller_ip_port_list: "{% for node in groups['openstack-network'] %}{{ node }}:{{ global.openstack.service_port.octavia.health_manager }}{% if not loop.last %},{% endif %}{% endfor %}"
+      #controller_ip_port_list: "{% for node in groups['openstack-network'] %}{{ hostvars[node]['ansible_%s' | format(global.openstack.octavia.mgmt_interface) | replace('-', '_')].ipv4.address }}:{{ global.openstack.service_port.octavia.health_manager }}{% if not loop.last %},{% endif %}{% endfor %}"
+    keystone_authtoken:
+      www_authenticate_uri: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      project_domain_name: "{{ global.openstack.domain.default.name }}"
+      user_domain_name: "{{ global.openstack.domain.default.name }}"
+      project_name: "{{ global.openstack.octavia.service.project }}"
+      auth_type: password
+      username: octavia
+      password: "{{ global.openstack.octavia.service.pass }}"
+    certificates:
+      ca_private_key_passphrase: foobar
+      ca_certificate: /etc/octavia/certs/ca_01.pem
+      ca_private_key: /etc/octavia/certs/private/cakey.pem
+    anchor:
+    networking:
+    haproxy_amphora:
+      haproxy_stick_size: 1m
+      server_ca: /etc/octavia/certs/ca_01.pem
+      client_cert: /etc/octavia/certs/client.pem
+      key_path: /etc/octavia/.ssh/octavia_ssh_key
+      base_path: /var/lib/octavia
+      base_cert_dir: /var/lib/octavia/certs
+      rest_request_conn_timeout: 10
+      rest_request_read_timeout: 120
+      active_connection_max_retries: 1500
+      active_connection_rety_interval: 5
+      bind_host: 0.0.0.0
+      bind_port: "{{ global.openstack.service_port.octavia.agent }}"
+    controller_worker:
+      amp_active_retries: 100
+      amp_active_wait_sec: 10
+      amp_image_tag: amphora
+      amp_image_owner_id: "(Note) 'Octavia-Project-ID(service)' will be created in task"
+      amp_flavor_id: 10000
+      amp_ssh_key_name: octavia_ssh_key
+      amp_boot_network_list: "(Note) 'Network-ID(lb-mgmt-net)' will be created in task"
+      amp_secgroup_list: "(Note) 'SecurityGroup-ID(lb-mgmt-sec-grp)' will be created in task"
+      amphora_driver: amphora_haproxy_rest_driver
+      compute_driver: compute_nova_driver
+      network_driver: allowed_address_pairs_driver
+      loadbalancer_topology: ACTIVE_STANDBY
+    task_flow:
+    oslo_messaging:
+      rpc_thread_pool_size: 2
+      topic: octavia_prov
+      event_stream_topic: neutron_lbaas_event
+      event_stream_transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+    house_keeping:
+    amphora_agent:
+    keepalived_vrrp:
+    service_auth:
+      www_authenticate_uri: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      memcache_servers: "{% for host in groups['memcached'] %}{{ host }}:{{ global.memcached.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      project_domain_name: "{{ global.openstack.domain.default.name }}"
+      user_domain_name: "{{ global.openstack.domain.default.name }}"
+      project_name: "{{ global.openstack.octavia.service.project }}"
+      username: octavia
+      password: "{{ global.openstack.octavia.service.pass }}"
+      auth_type: password
+    nova:
+      enable_anti_affinity: True
+      anti_affinity_policy: anti-affinity
+    glance:
+    neutron:
+    quotas:
+      default_load_balancer_quota: -1
+      default_listener_quota: -1
+      default_member_quota: -1
+      default_pool_quota: -1
+      default_health_monitor_quota: -1

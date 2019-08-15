@@ -1,0 +1,323 @@
+---
+# tasks file for openstack-octavia-controller
+
+- name: Create MySQL Database - octavia
+  mysql_db:
+    name: octavia
+    state: present
+  run_once: yes
+
+- name: Create MySQL User - octavia
+  mysql_user:
+    name: "{{ global.openstack.octavia.db_user }}"
+    password: "{{ global.openstack.octavia.db_pass }}"
+    host: "{{ item }}"
+    priv: 'octavia.*:ALL'
+    state: present
+  with_items:
+    - "localhost"
+    - "%"
+  run_once: yes
+
+#########################################################
+
+- name: Install Octavia Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openstack-octavia-api
+      - python2-octaviaclient
+
+#########################################################
+
+#- name: Query Project-ID - service
+#  shell: |
+#    openstack project show service -f value -c id
+#  environment: "{{ env.openstack.admin_openrc }}"
+#  changed_when: false
+#  failed_when: project_id_service.rc != 0
+#  run_once: yes
+#  register: project_id_service
+
+#- debug: var=project_id_service
+
+#########################################################
+
+- name: Check Exist User - octavia
+  shell: |
+    openstack user show octavia
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_user_octavia
+
+- name: Create User - octavia
+  shell: |
+    openstack user create --domain {{ global.openstack.domain.default.id }} --password {{ global.openstack.octavia.service.pass }} octavia
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_user_octavia.rc != 0
+
+- name: Check Role-Assignment - octavia
+  shell: |
+    openstack role assignment list --user octavia --project {{ global.openstack.octavia.service.project }} --names -f value -c User
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_role_assignment_octavia
+
+- name: Assignment Role to User - octavia
+  shell: |
+    openstack role add --project {{ global.openstack.octavia.service.project }} --user octavia {{ global.openstack.octavia.service.role }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: '"octavia@" + global.openstack.domain.default.name not in check_role_assignment_octavia.stdout_lines'
+
+#########################################################
+
+- name: Check Service - octavia
+  shell: |
+    openstack service show octavia -f value
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_service_octavia
+
+- name: Create Service - octavia
+  shell: |
+    openstack service create --name octavia --description "OpenStack Load-Balancer" {{ global.openstack.octavia.service.type }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_service_octavia.rc != 0
+
+#########################################################
+
+- name: Check Exist EndPoint - octavia
+  shell: |
+    openstack endpoint list --service {{ item.service }} --interface {{ item.interface }} --region {{ item.region }} -f value -c 'Region' -c 'Service Name' -c 'Interface'
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  with_items: "{{ octavia.endpoint }}"
+  register: check_exist_endpoint
+
+- name: Create EndPoint - octavia
+  vars:
+    result_check_string: "{{ item.item.region }} {{ item.item.service }} {{ item.item.interface }}"
+  shell: |
+    openstack endpoint create --region {{ item.item.region }} {{ item.item.type }} {{ item.item.interface }} {{ item.item.url }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  with_items: "{{ check_exist_endpoint.results }}"
+  when: "result_check_string not in item.stdout_lines"
+
+#########################################################
+
+- name: Create /root/octavia-openrc
+  template:
+    src: "octavia-openrc.j2"
+    dest: "/root/octavia-openrc"
+    owner: root
+    group: root
+    mode: '0600'
+    backup: yes
+
+#########################################################
+
+- name: Check Exist Network - lb-mgmt-net
+  shell: |
+    openstack network show {{ octavia.mgmt_network.name }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_network_mgmt_net
+
+- name: Create Network - lb-mgmt-net
+    #openstack network create {{ octavia.mgmt_network.name }} --project {{ project_id_service.stdout }} {{ octavia.mgmt_network.share }} --provider-network-type {{ octavia.mgmt_network.provider_network_type }}
+    #openstack network create {{ octavia.mgmt_network.name }} --project {{ global.openstack.octavia.service.project }} {{ octavia.mgmt_network.share }} --provider-network-type {{ octavia.mgmt_network.provider_network_type }}
+    #neutron net-create {{ octavia.mgmt_network.name }} --tenant-id {{ project_id_service.stdout }} --provider:network_type vxlan
+  shell: |
+    openstack network create {{ octavia.mgmt_network.name }} --project {{ global.openstack.octavia.service.project }} {{ octavia.mgmt_network.share }} --provider-network-type {{ octavia.mgmt_network.provider_network_type }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_network_mgmt_net.rc != 0
+
+#########################################################
+
+- name: Check Exist Subnet - lb-mgmt-subnet-X
+  shell: |
+    openstack subnet show {{ item.name }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  with_items: "{{ octavia.mgmt_network.subnet }}"
+  register: check_subnet_mgmt_net
+
+#- debug: var=check_subnet_mgmt_net
+
+- name: Create Subnet - lb-mgmt-subnet-X
+  shell: |
+    openstack subnet create {{ item.item.name }} --network {{ octavia.mgmt_network.name }} --gateway none --subnet-range {{ item.item.subnet_range }} --allocation-pool {{ item.item.allocation_pool }} --dns-nameserver {{ item.item.dns }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  with_items: "{{ check_subnet_mgmt_net.results }}"
+  when: item.rc != 0
+
+##########################################################
+
+- name: Check SecurityGroup - lb-mgmt-sec-grp
+  shell: |
+    openstack security group show {{ octavia.mgmt_network.security_group.name }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_security_group
+
+- name: Create SecurityGroup - lb-mgmt-sec-grp
+  shell: |
+    openstack security group create {{ octavia.mgmt_network.security_group.name }} --project {{ global.openstack.octavia.service.project }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_security_group.rc != 0
+
+##########################################################
+
+- name: Create SecurityGroup Rules
+  shell: |
+    openstack security group rule create --protocol {{ item.protocol }} --dst-port {{ item.dst_port }} --remote-ip {{ item.remote_ip }} --description "{{ item.description }}" {{ octavia.mgmt_network.security_group.name }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  #ignore_errors: yes
+  run_once: yes
+  with_items: "{{ octavia.mgmt_network.security_group.rule }}"
+
+##########################################################
+
+- name: Download Amphora Image
+  get_url:
+    url: "{{ octavia.amphora.image.mirror }}/{{ octavia.amphora.image.file_name }}"
+    dest: "/tmp/{{ octavia.amphora.image.file_name }}"
+    checksum: sha256:18dcb6927e040eed414e45faef2bcb210c5c1f507f4f0cda8e3e7a0fa8edbd66
+  run_once: yes
+
+- name: Unarchive .tgz for Amphora Image
+  unarchive:
+    src: "/tmp/{{ octavia.amphora.image.file_name }}"
+    dest: "/tmp/"
+    creates: "/tmp/{{ octavia.amphora.image.file_name | replace('.tgz', '') }}"
+    remote_src: yes
+  run_once: yes
+  #list_files: yes
+  when: octavia.amphora.image.is_tgz == True
+  register: unarchive_amphoroa_image
+
+#- debug: var=unarchive_amphoroa_image
+
+- name: Check Exist Amphora Image
+  vars:
+    amphora_image_name: "{{ octavia.amphora.image.file_name | replace('.tgz', '') }}"
+  shell: |
+    openstack image list --private --name {{ amphora_image_name }} -f value -c Name -c Status
+  environment: "{{ env.openstack.octavia_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_amphora_image
+
+- name: Register Amphora Image
+  vars:
+    amphora_image_name: "{{ octavia.amphora.image.file_name | replace('.tgz', '') }}"
+  shell: |
+    openstack image create {{ amphora_image_name }} --file /tmp/{{ octavia.amphora.image.file_name | replace('.tgz', '') }} --disk-format {{ octavia.amphora.image.disk_format }} --container-format {{ octavia.amphora.image.container_format }} --private --tag {{ octavia.conf.controller_worker.amp_image_tag }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  #when: 'check_endpoint_glance_admin.stdout != glance.test_image.file_name'
+  when: 'amphora_image_name + " active" not in check_amphora_image.stdout_lines'
+
+##########################################################
+
+- name: Check Flavor for Amphora Instance
+  shell: |
+    openstack flavor show {{ octavia.amphora.flavor.name }}
+  environment: "{{ env.openstack.octavia_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_amphora_flavor
+
+- name: Create Flavor for Anphora Instance
+  shell: |
+    openstack flavor create --id {{ octavia.amphora.flavor.id }} --private --project {{ global.openstack.octavia.service.name }} --ram {{ octavia.amphora.flavor.ram }} --vcpus {{ octavia.amphora.flavor.vcpus }} --disk {{ octavia.amphora.flavor.disk }} {{ octavia.amphora.flavor.name }}
+  environment: "{{ env.openstack.octavia_openrc }}"
+  run_once: yes
+  when: check_amphora_flavor.rc != 0
+
+##########################################################
+
+- name: Query Project-ID of Octavia
+  shell: |
+    openstack project show {{ global.openstack.octavia.service.project }} -f value -c id
+  environment: "{{ env.openstack.octavia_openrc }}"
+  run_once: yes
+  register: query_octavia_project_id
+
+#- debug: var=query_octavia_project_id.stdout
+
+- name: Query Network-ID of lb-mgmt-net
+  shell: |
+    openstack network show {{ octavia.mgmt_network.name }} -f value -c id
+  environment: "{{ env.openstack.octavia_openrc }}"
+  run_once: yes
+  register: query_octavia_network_id
+
+#- debug: var=query_octavia_network_id.stdout
+
+- name: Query SecurityGroup-ID of lb-mgmt-sec-grp
+  shell: |
+    openstack security group show {{ octavia.mgmt_network.security_group.name }} -f value -c id
+  environment: "{{ env.openstack.octavia_openrc }}"
+  run_once: yes
+  register: query_octavia_security_group_id
+
+#- debug: var=query_octavia_security_group_id.stdout
+
+- name: Config Octavia-API - /etc/octavia/octavia.conf
+  vars:
+    octavia_conf_controller_worker_amp_image_owner_id: "{{ query_octavia_project_id.stdout }}"
+    octavia_conf_controller_worker_amp_boot_network_list: "{{ query_octavia_network_id.stdout }}"
+    octavia_conf_controller_worker_amp_secgroup_list: "{{ query_octavia_security_group_id.stdout }}"
+  template:
+    src: "octavia.conf.j2"
+    dest: "/etc/octavia/octavia.conf"
+    owner: root
+    group: octavia
+    mode: '0640'
+    backup: yes
+
+#########################################################
+
+- name: Create DB-Tables for octavia
+  become: yes
+  become_user: octavia
+  shell: octavia-db-manage upgrade head
+  args:
+    executable: /bin/sh
+  run_once: yes
+  notify: Restart Octavia Service - Controller
+
+- name: Ensure Octavia-API Service Running
+  systemd:
+    name: octavia-api
+    state: started
+    enabled: yes
+

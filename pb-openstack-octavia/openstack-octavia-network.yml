@@ -1,0 +1,11 @@
+---
+- hosts:
+    - openstack-network
+  gather_facts: yes
+  vars:
+  vars_files:
+    - "vars-global.yml"
+    - "vars-environment.yml"
+  roles:
+    - openstack-octavia
+

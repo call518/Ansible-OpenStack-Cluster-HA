@@ -1,0 +1,5 @@
+sysctl_file: "/etc/sysctl.d/50-redis.conf"
+sysctl_config:
+  - token: "vm.overcommit_memory"
+    value: 1
+    comment: "for Redis"

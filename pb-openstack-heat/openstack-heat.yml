@@ -1,0 +1,9 @@
+---
+- hosts:
+    - openstack-controller
+  vars:
+  vars_files:
+    - "vars-global.yml"
+    - "vars-environment.yml"
+  roles:
+    - openstack-heat

@@ -1,0 +1,276 @@
+---
+# defaults file for haproxy
+
+#random_host: "{{ groups['haproxy'] | random }}"
+
+xinetd:
+  monitor_galera_service_name: monitor_galera
+  monitor_galera_service_port: "{{ global.haproxy.galera_xinet_check_port }}"
+  check_script:
+    file_name: clustercheck
+    file_path: "/usr/bin"
+    db_user: clustercheckuser
+    db_pass: 1234
+
+haproxy_stats:
+  bind_address: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.haproxy.stats.interface)].ipv4.address }}"
+  auth:
+    user: admin
+    pass: 1234
+
+haproxy:
+  global:
+    chroot: "/var/lib/haproxy"
+    user: haproxy
+    group: haproxy
+    maxconn: 8192
+    log: /dev/log local0
+    pidfile: /var/run/haproxy.pid
+    spread_checks: 3
+    stats:
+      - "socket 127.0.0.1:14567"
+      - "socket /var/run/haproxy.sock mode 600 level admin"
+
+  default:
+    log: global
+    mode: tcp
+    retries: 3
+    options:
+      - forwardfor
+      - dontlognull
+      - redispatch
+      - forceclose
+      - tcp-smart-accept
+      - tcp-smart-connect
+    timeouts:
+      - "check 3500ms"
+      - "queue 3500ms"
+      - "connect 3500ms"
+      - "http-request 3500ms"
+      - "client 10800s"
+      - "server 10800s"
+    maxconn: 8192
+
+  listen:
+    haproxy_stats:
+      bind:
+        address: "{{ haproxy_stats.bind_address }}"
+        port: 9000
+      timeouts:
+        - "connect 10s"
+        - "client 1m"
+        - "server 1m"
+      mode: http
+      stats:
+        - "enable"
+        - "refresh 60s"
+        - "hide-version"
+        - "admin if TRUE"
+        - "realm Haproxy\ Statistics"
+        - "uri /haproxy_stats level admin"
+        - "auth {{ haproxy_stats.auth.user }}:{{ haproxy_stats.auth.pass }}"
+
+    galera:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.galera }}"
+      mode: tcp
+      balance: leastconn
+      options:
+        - httpchk
+        #- allbackups
+      timeouts:
+        - "client  10800s"
+        - "server  10800s"
+      default_server:
+        port: "{{ global.haproxy.galera_xinet_check_port }}"
+        inter: 2s
+        downinter: 5s
+        rise: 3
+        fall: 2
+        slowstart: 60s
+        maxconn: 64
+        maxqueue: 128
+        weight: 100
+
+    horizon:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.horizon }}"
+      mode: http
+      http_check_get_url: "{{ global.openstack.horizon.web_root }}"
+      cookie: "SERVERID insert indirect nocache"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    keystone:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.keystone }}"
+      http_check_get_url: "/"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    glance_api:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.glance.api }}"
+      http_check_get_url: "/"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    glance_registry:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.glance.registry }}"
+      http_check_get_url: "/"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    cinder:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.cinder }}"
+      http_check_get_url: "/"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    nova_api:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.nova.api }}"
+      http_check_get_url: "/"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    nova_placement:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.nova.placement }}"
+      http_check_get_url: "/"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    nova_metadata:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.nova.metadata }}"
+      http_check_get_url: "/"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    neutron:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.neutron }}"
+      http_check_get_url: "/"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    gnocchi:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.gnocchi }}"
+      http_check_get_url: "/"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    aodh:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.aodh }}"
+      http_check_get_url: "/"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    heat_api:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.heat_api }}"
+      http_check_get_url: "/"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    heat_api_cfn:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.heat_api_cfn }}"
+      http_check_get_url: "/"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    octavia:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.octavia.api }}"
+      http_check_get_url: "/"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    barbican:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.barbican }}"
+      http_check_get_url: "/"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    rabbitmq_management:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.rabbitmq.management.port }}"
+      http_check_get_url: "/"
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+
+    novnc:
+      bind:
+        address: "{{ global.haproxy.fqdn }}"
+        port: "{{ global.openstack.service_port.nova.novncproxy }}"
+      http_check_get_url: "/"
+      sticky:
+        tcp:
+          balance: "source"
+          hash_type: "consistent"
+      mode: tcp
+      option:
+        - tcpka
+        - tcplog
+        - forwardfor
+      server:
+        inter: 2000
+        rise: 2
+        fall: 5
+

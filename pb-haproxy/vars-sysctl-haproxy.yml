@@ -1,0 +1,5 @@
+sysctl_file: "/etc/sysctl.d/50-haproxy.conf"
+sysctl_config:
+  - token: "net.ipv4.ip_nonlocal_bind"
+    value: "{{ global.haproxy.sysctl.net_ipv4_ip_nonlocal_bind }}"
+    comment: "for HAProxy"

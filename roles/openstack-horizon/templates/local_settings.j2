@@ -1,0 +1,116 @@
+#jinja2: trim_blocks:False
+######################################################################
+import os
+from django.utils.translation import ugettext_lazy as _
+from openstack_dashboard.settings import HORIZON_CONFIG
+DEBUG = {{ horizon.local_settings.debug }}
+WEBROOT = '{{ horizon.local_settings.webroot }}'
+ALLOWED_HOSTS = ['*']
+OPENSTACK_API_VERSIONS = {
+    "identity": {{ horizon.local_settings.openstack_api_versions.identity }},
+    "image": {{ horizon.local_settings.openstack_api_versions.image }},
+    "volume": {{ horizon.local_settings.openstack_api_versions.volume }},
+}
+OPENSTACK_KEYSTONE_MULTIDOMAIN_SUPPORT = {{ horizon.local_settings.openstack_keystone_multidomain_support }}
+OPENSTACK_KEYSTONE_DEFAULT_DOMAIN = '{{ horizon.local_settings.openstack_keystone_default_domain }}'
+LOCAL_PATH = '{{ horizon.local_settings.local_path }}'
+SECRET_KEY='{{ horizon.local_settings.secret_key }}'
+SESSION_ENGINE = '{{ horizon.local_settings.session_engine }}'
+CACHES = {
+        'default': {
+                'BACKEND': '{{ horizon.local_settings.caches.default.backend }}',
+{% for host in horizon.local_settings.caches.default.location_list %}
+                'LOCATION': '{{ host }}:{{ horizon.local_settings.caches.default.memcached_port }}'{% if not loop.last %},{% endif %}{% endfor %}
+        }
+}
+EMAIL_BACKEND = '{{ horizon.local_settings.email_backend }}'
+OPENSTACK_HOST = "{{ horizon.local_settings.openstack_host }}"
+OPENSTACK_KEYSTONE_URL = "{{ horizon.local_settings.openstack_keystone_url }}" % OPENSTACK_HOST
+OPENSTACK_KEYSTONE_DEFAULT_ROLE = "{{ horizon.local_settings.openstack_keystone_default_role }}"
+OPENSTACK_KEYSTONE_BACKEND = {
+    'name': '{{ horizon.local_settings.openstack_keystone_backend.name }}',
+    'can_edit_user': {{ horizon.local_settings.openstack_keystone_backend.can_edit_user }},
+    'can_edit_group': {{ horizon.local_settings.openstack_keystone_backend.can_edit_group }},
+    'can_edit_project': {{ horizon.local_settings.openstack_keystone_backend.can_edit_project }},
+    'can_edit_domain': {{ horizon.local_settings.openstack_keystone_backend.can_edit_domain }},
+    'can_edit_role': {{ horizon.local_settings.openstack_keystone_backend.can_edit_role }},
+}
+OPENSTACK_HYPERVISOR_FEATURES = {
+    'can_set_mount_point': {{ horizon.local_settings.openstack_hypervisor_features.can_set_mount_point }},
+    'can_set_password': {{ horizon.local_settings.openstack_hypervisor_features.can_set_password }},
+    'requires_keypair': {{ horizon.local_settings.openstack_hypervisor_features.requires_keypair }},
+    'enable_quotas': {{ horizon.local_settings.openstack_hypervisor_features.enable_quotas }}
+}
+OPENSTACK_CINDER_FEATURES = {
+    'enable_backup': {{ horizon.local_settings.openstack_cinder_features.enable_backup }},
+}
+OPENSTACK_NEUTRON_NETWORK = {
+    'enable_router': {{ horizon.local_settings.openstack_neutron_network.enable_router }},
+    'enable_quotas': {{ horizon.local_settings.openstack_neutron_network.enable_quotas }},
+    'enable_ipv6': {{ horizon.local_settings.openstack_neutron_network.enable_ipv6 }},
+    'enable_distributed_router': {{ horizon.local_settings.openstack_neutron_network.enable_distributed_router }},
+    'enable_ha_router': {{ horizon.local_settings.openstack_neutron_network.enable_ha_router }},
+    'enable_lb': {{ horizon.local_settings.openstack_neutron_network.enable_lb }},
+    'enable_firewall': {{ horizon.local_settings.openstack_neutron_network.enable_firewall }},
+    'enable_vpn': {{ horizon.local_settings.openstack_neutron_network.enable_vpn }},
+    'enable_fip_topology_check': {{ horizon.local_settings.openstack_neutron_network.enable_fip_topology_check }},
+    'supported_vnic_types': {{ horizon.local_settings.openstack_neutron_network.supported_vnic_types }},
+    'physical_networks': {{ horizon.local_settings.openstack_neutron_network.physical_networks }},
+}
+OPENSTACK_HEAT_STACK = {
+    'enable_user_pass': {{ horizon.local_settings.openstack_heat_stack.enable_user_pass }},
+}
+IMAGE_CUSTOM_PROPERTY_TITLES = {
+    "architecture": {{ horizon.local_settings.image_custom_property_titles.architecture }},
+    "kernel_id": {{ horizon.local_settings.image_custom_property_titles.architecture }},
+    "ramdisk_id": {{ horizon.local_settings.image_custom_property_titles.architecture }},
+    "image_state": {{ horizon.local_settings.image_custom_property_titles.architecture }},
+    "project_id": {{ horizon.local_settings.image_custom_property_titles.architecture }},
+    "image_type": {{ horizon.local_settings.image_custom_property_titles.architecture }},
+}
+IMAGE_RESERVED_CUSTOM_PROPERTIES = {{ horizon.local_settings.image_reserved_custom_properties }}
+API_RESULT_LIMIT = {{ horizon.local_settings.api_result_limit }}
+API_RESULT_PAGE_SIZE = {{ horizon.local_settings.api_result_page_size }}
+SWIFT_FILE_TRANSFER_CHUNK_SIZE = {{ horizon.local_settings.swift_file_transfer_chunk_size }}
+INSTANCE_LOG_LENGTH = {{ horizon.local_settings.instance_log_length }}
+DROPDOWN_MAX_ITEMS = {{ horizon.local_settings.dropdown_max_items }}
+TIME_ZONE = "{{ horizon.local_settings.time_zone }}"
+POLICY_FILES_PATH = '{{ horizon.local_settings.policy_files_path }}'
+LOGGING = {
+    'version': {{ horizon.local_settings.logging.version }},
+    'disable_existing_loggers': {{ horizon.local_settings.logging.disable_existing_loggers }},
+    'formatters': {
+        'console': {
+            'format': '{{ horizon.local_settings.logging.formatters.console.format }}'
+        },
+        'operation': {
+            'format': '{{ horizon.local_settings.logging.formatters.operation.format }}'
+        },
+    },
+    'handlers': {
+        'null': {
+            'level': '{{ horizon.local_settings.logging.handlers.name_null.level }}',
+            'class': '{{ horizon.local_settings.logging.handlers.name_null.class }}',
+        },
+        'console': {
+            'level': '{{ horizon.local_settings.logging.handlers.console.level }}',
+            'class': '{{ horizon.local_settings.logging.handlers.console.class }}',
+            'formatter': '{{ horizon.local_settings.logging.handlers.console.formatter }}',
+        },
+        'operation': {
+            'level': '{{ horizon.local_settings.logging.handlers.operation.level }}',
+            'class': '{{ horizon.local_settings.logging.handlers.operation.class }}',
+            'formatter': '{{ horizon.local_settings.logging.handlers.operation.formatter }}',
+        },
+    },
+    'loggers': {
+        {% for logger in horizon.local_settings.logging.loggers %}'{{ logger.title }}': { 'handlers': {{ logger.handlers }}, {% if logger.level is not none %}'level': '{{ logger.level }}', {% endif %}'propagate': {{ logger.propagate }}, },
+        {% endfor %}
+    },
+}
+SECURITY_GROUP_RULES = {
+    {% for security_group_rule in horizon.local_settings.security_group_rules %}'{{ security_group_rule.title }}': { 'name': {{ security_group_rule.name }}, 'ip_protocol': '{{ security_group_rule.ip_protocol }}', 'from_port': '{{ security_group_rule.from_port }}', 'to_port': '{{ security_group_rule.to_port }}', },
+    {% endfor %}
+}
+REST_API_REQUIRED_SETTINGS = {{ horizon.local_settings.rest_api_required_settings }}
+ALLOWED_PRIVATE_SUBNET_CIDR = {{ horizon.local_settings.allowed_private_subnet_cidr }}

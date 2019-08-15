@@ -1,0 +1,182 @@
+---
+# defaults file for openstack-nova-controller
+
+nova:
+  endpoint:
+    - { region: "{{ global.openstack.nova.api.service.region }}", type: "{{ global.openstack.nova.api.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.nova.api }}/v2.1", interface: "admin", service: "{{ global.openstack.nova.api.service.name }}" }
+    - { region: "{{ global.openstack.nova.api.service.region }}", type: "{{ global.openstack.nova.api.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.nova.api }}/v2.1", interface: "internal", service: "{{ global.openstack.nova.api.service.name }}" }
+    - { region: "{{ global.openstack.nova.api.service.region }}", type: "{{ global.openstack.nova.api.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.nova.api }}/v2.1", interface: "public", service: "{{ global.openstack.nova.api.service.name }}" }
+    - { region: "{{ global.openstack.nova.api.service.region }}", type: "{{ global.openstack.nova.placement.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.nova.placement }}", interface: "admin", service: "{{ global.openstack.nova.placement.service.name }}" }
+    - { region: "{{ global.openstack.nova.api.service.region }}", type: "{{ global.openstack.nova.placement.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.nova.placement }}", interface: "internal", service: "{{ global.openstack.nova.placement.service.name }}" }
+    - { region: "{{ global.openstack.nova.api.service.region }}", type: "{{ global.openstack.nova.placement.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.nova.placement }}", interface: "public", service: "{{ global.openstack.nova.placement.service.name }}" }
+  conf:
+    default:
+      log_dir: /var/log/nova
+      enabled_apis: "osapi_compute,metadata"
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      auth_strategy: keystone
+      my_ip: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.nova.listen_interface)].ipv4.address }}"
+      ec2_listen: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.nova.listen_interface)].ipv4.address }}"
+      osapi_compute_listen: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.nova.listen_interface)].ipv4.address }}"
+      metadata_listen: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.nova.listen_interface)].ipv4.address }}"
+      use_neutron: True
+      firewall_driver: "nova.virt.firewall.NoopFirewallDriver"
+      allow_same_net_traffic: False
+      instance_usage_audit: True
+      instance_usage_audit_period: hour
+      notify_on_state_change: vm_and_task_state
+      compute_monitors: "cpu.virt_driver, numa_mem_bw.virt_driver"
+      cpu_allocation_ratio: 4.0
+      ram_allocation_ratio: 1
+      instance_name_template: "instance-%08x"
+      allow_resize_to_same_host: False
+      block_device_allocate_retries: 300
+      block_device_allocate_retries_interval: 10
+      block_device_creation_timeout: 30
+    api:
+      auth_strategy: keystone
+    api_database:
+      connection: "mysql+pymysql://{{ global.openstack.nova.api.db_user }}:{{ global.openstack.nova.api.db_pass }}@{{ global.haproxy.fqdn }}/nova_api"
+    barbican:
+    cache:
+      enabled: True
+      backend: oslo_cache.memcache_pool
+      memcache_servers: "{% for host in groups['memcached'] %}{{ host }}:{{ global.memcached.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+    cells:
+    cinder:
+      os_region_name: RegionOne
+    cloudpipe:
+    conductor:
+    cors:
+    cors.subdomain:
+    crypto:
+    database:
+      connection: "mysql+pymysql://{{ global.openstack.nova.api.db_user }}:{{ global.openstack.nova.api.db_pass }}@{{ global.haproxy.fqdn }}/nova"
+    ephemeral_storage_encryption:
+    filter_scheduler:
+      host_subset_size: 1
+      max_io_ops_per_host: 8
+      max_instances_per_host: 50
+      track_instance_changes: True
+      enabled_filters:
+        - RetryFilter
+        - AvailabilityZoneFilter
+        - ComputeFilter
+        - ComputeCapabilitiesFilter
+        - ImagePropertiesFilter
+        - ServerGroupAntiAffinityFilter
+        - ServerGroupAffinityFilter
+        - RamFilter
+        - CoreFilter
+        - SimpleCIDRAffinityFilter
+        - NumInstancesFilter
+        - SameHostFilter
+        - DifferentHostFilter
+      ram_weight_multiplier: "1.0"
+      cpu_weight_multiplier: "1.0"
+      disk_weight_multiplier: "1.0"
+      io_ops_weight_multiplier: "-1.0"
+      pci_weight_multiplier: "1.0"
+      soft_affinity_weight_multiplier: "1.0"
+      soft_anti_affinity_weight_multiplier: "1.0"
+      build_failure_weight_multiplier: "1000000.0"
+      shuffle_best_same_weighed_hosts: False
+    glance:
+      api_servers: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.glance.api }}"
+    guestfs:
+    hyperv:
+    image_file_url:
+    ironic:
+    key_manager:
+    keystone_authtoken:
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      memcached_servers: "{% for host in groups['memcached'] %}{{ host }}:{{ global.memcached.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      auth_type: password
+      project_domain_name: "{{ global.openstack.domain.default.name }}"
+      user_domain_name: "{{ global.openstack.domain.default.name }}"
+      project_name: "{{ global.openstack.nova.api.service.project }}"
+      region_name: "{{ global.openstack.nova.api.service.region }}"
+      username: nova
+      password: "{{ global.openstack.nova.api.service.pass }}"
+    libvirt:
+      virt_type: qemu
+      #virt_type: kvm
+      disk_cachemodes: '"network=writeback"'
+      inject_password: false
+      inject_key: false
+      inject_partition: -2
+      hw_disk_discard: unmap
+      images_type: rbd
+      images_rbd_pool: vms
+      images_rbd_ceph_conf: /etc/ceph/ceph.conf
+      rbd_user: cinder
+      rbd_secret_uuid: "{{ global.ceph.libvirtd.secret.uuid }}"
+      live_migration_uri: "qemu+ssh://nova@%s/system?no_verify=1&keyfile=/var/lib/nova/.ssh/id_rsa"
+      live_migration_flag: '"VIR_MIGRATE_UNDEFINE_SOURCE,VIR_MIGRATE_PEER2PEER,VIR_MIGRATE_LIVE,VIR_MIGRATE_PERSIST_DEST,VIR_MIGRATE_TUNNELLED"'
+    matchmaker_redis:
+    metrics:
+    mks:
+    neutron:
+      url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.neutron }}"
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      auth_type: password
+      project_domain_name: "{{ global.openstack.domain.default.name }}"
+      user_domain_name: "{{ global.openstack.domain.default.name }}"
+      region_name: "{{ global.openstack.neutron.service.region }}"
+      project_name: "{{ global.openstack.neutron.service.project }}"
+      username: neutron
+      password: "{{ global.openstack.neutron.service.pass }}"
+      service_metadata_proxy: True
+      metadata_proxy_shared_secret: "{{ global.openstack.neutron.metadata_proxy_shared_secret }}"
+    osapi_v21:
+    oslo_concurrency:
+      lock_path: /var/lib/nova/tmp
+    oslo_messaging_amqp:
+    oslo_messaging_notifications:
+      driver: messagingv2
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+    oslo_messaging_rabbit:
+    oslo_messaging_zmq:
+    oslo_middleware:
+    oslo_policy:
+    placement:
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      region_name: "{{ global.openstack.nova.placement.service.region }}"
+      project_domain_name: "{{ global.openstack.domain.default.name }}"
+      user_domain_name: "{{ global.openstack.domain.default.name }}"
+      project_name: "{{ global.openstack.nova.placement.service.project }}"
+      auth_type: password
+      username: placement
+      password: "{{ global.openstack.nova.placement.service.pass }}"
+    placement_database:
+      connection: "mysql+pymysql://{{ global.openstack.nova.placement.db_user }}:{{ global.openstack.nova.placement.db_pass }}@{{ global.haproxy.fqdn }}/placement"
+    rdp:
+    remote_debug:
+    serial_console:
+    spice:
+    ssl:
+    trusted_computing:
+    upgrade_levels:
+    vmware:
+    vnc:
+      enabled: True
+      #server_listen: "{% if inventory_hostname in groups['openstack-compute'] %}0.0.0.0{% else %}{{ hostvars[inventory_hostname]['ansible_%s' | format(global.novnc.interface)].ipv4.address }}{% endif %}"
+      server_listen: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.novnc.interface)].ipv4.address }}"
+      server_proxyclient_address: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.novnc.interface)].ipv4.address }}"
+      novncproxy_host: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.novnc.interface)].ipv4.address }}"
+      novncproxy_port: "{{ global.openstack.service_port.nova.novncproxy }}"
+      #novncproxy_base_url: "https://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.nova.novncproxy }}/vnc_auto.html"
+      #novncproxy_base_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.nova.novncproxy }}/vnc_auto.html"
+      novncproxy_base_url: "http://{{ global.haproxy.vip }}:{{ global.openstack.service_port.nova.novncproxy }}/vnc_auto.html"
+    workarounds:
+    wsgi:
+    xenserver:
+    xvp:
+
+placement_wsgi_conf:
+  bind_address: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.nova.listen_interface)].ipv4.address }}"
+  processes: 3
+  threads: 1
+  user: nova
+  group: nova
+

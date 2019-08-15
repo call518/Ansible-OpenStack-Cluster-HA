@@ -1,0 +1,21 @@
+---
+# tasks file for post-tasks
+
+- name: Set Default Quota
+  shell: |
+    openstack quota set --class --{{ item.key }} {{ item.value }} default
+  environment: "{{ env.openstack.admin_openrc }}"
+  #changed_when: false
+  #failed_when: no
+  run_once: yes
+  with_items: "{{ global.default_class_quota }}"
+
+- name: Set Quota - demo
+  shell: |
+    openstack quota set --{{ item.key }} {{ item.value }} demo
+  environment: "{{ env.openstack.admin_openrc }}"
+  #changed_when: false
+  #failed_when: no
+  run_once: yes
+  with_items: "{{ global.default_class_quota }}"
+

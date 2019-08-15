@@ -1,0 +1,77 @@
+---
+# defaults file for openstack-cinder
+
+cinder:
+  endpoint:
+    - { region: "{{ global.openstack.cinder.service.region }}", type: "{{ global.openstack.cinder.service.type }}v2", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.cinder }}/v2/%\\(project_id\\)s", interface: "admin", service: "{{ global.openstack.cinder.service.name }}v2" }
+    - { region: "{{ global.openstack.cinder.service.region }}", type: "{{ global.openstack.cinder.service.type }}v2", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.cinder }}/v2/%\\(project_id\\)s", interface: "internal", service: "{{ global.openstack.cinder.service.name }}v2" }
+    - { region: "{{ global.openstack.cinder.service.region }}", type: "{{ global.openstack.cinder.service.type }}v2", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.cinder }}/v2/%\\(project_id\\)s", interface: "public", service: "{{ global.openstack.cinder.service.name }}v2" }
+    - { region: "{{ global.openstack.cinder.service.region }}", type: "{{ global.openstack.cinder.service.type }}v3", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.cinder }}/v3/%\\(project_id\\)s", interface: "admin", service: "{{ global.openstack.cinder.service.name }}v3" }
+    - { region: "{{ global.openstack.cinder.service.region }}", type: "{{ global.openstack.cinder.service.type }}v3", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.cinder }}/v3/%\\(project_id\\)s", interface: "internal", service: "{{ global.openstack.cinder.service.name }}v3" }
+    - { region: "{{ global.openstack.cinder.service.region }}", type: "{{ global.openstack.cinder.service.type }}v3", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.cinder }}/v3/%\\(project_id\\)s", interface: "public", service: "{{ global.openstack.cinder.service.name }}v3" }
+  conf:
+    default:
+      log_dir: /var/log/cinder
+      my_ip: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.cinder.listen_interface)].ipv4.address }}"
+      osapi_volume_listen: "{{ ansible_hostname }}"
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      auth_strategy: keystone
+      enabled_backends: ceph
+      volume_usage_audit_period: hour
+      volume_name_template: openstack-volume-%s
+      glance_api_servers: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.glance.api }}"
+      scheduler_max_attempts: 100
+      backup_driver: cinder.backup.drivers.ceph
+      backup_ceph_user: cinder-backup
+      backup_ceph_conf: /etc/ceph/ceph.conf
+      backup_ceph_chunk_size: 134217728
+      backup_ceph_pool: backups
+      backup_ceph_stripe_unit: 0
+      backup_ceph_stripe_count: 0
+      restore_discard_excess_bytes: true
+    ceph:
+      volume_driver: cinder.volume.drivers.rbd.RBDDriver
+      rbd_cluster_name: ceph
+      rbd_pool: volumes
+      rbd_user: cinder
+      rbd_ceph_conf: /etc/ceph/ceph.conf
+      rbd_flatten_volume_from_snapshot: false
+      rbd_secret_uuid: "{{ global.ceph.libvirtd.secret.uuid }}"
+      rbd_max_clone_depth: 5
+      rbd_store_chunk_size: 4
+      rados_connect_timeout: -1
+    backend:
+    brcd_fabric_example:
+    cisco_fabric_example:
+    coordination:
+    fc_zone_manager:
+    barbican:
+    cors:
+    cors_subdomain:
+    database:
+      connection: "mysql+pymysql://{{ global.openstack.cinder.db_user }}:{{ global.openstack.cinder.db_pass }}@{{ global.haproxy.fqdn }}/cinder"
+    key_manager:
+    keystone_authtoken:
+      www_authenticate_uri: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}"
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}"
+      memcached_servers: "{% for host in groups['memcached'] %}{{ host }}:{{ global.memcached.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      auth_type: password
+      project_domain_name: "{{ global.openstack.domain.default.name }}"
+      user_domain_name: "{{ global.openstack.domain.default.name }}"
+      project_name: "{{ global.openstack.cinder.service.project }}"
+      username: cinder
+      password: "{{ global.openstack.cinder.service.pass }}"
+    matchmaker_redis:
+    oslo_concurrency:
+      lock_path: /var/lib/cinder/tmp
+    oslo_messaging_amqp:
+    oslo_messaging_notifications:
+      driver: messagingv2
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+    oslo_messaging_rabbit:
+    oslo_messaging_zmq:
+    oslo_middleware:
+    oslo_policy:
+    oslo_reports:
+    oslo_versionedobjects:
+    ssl:

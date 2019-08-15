@@ -1,0 +1,48 @@
+[DEFAULT]
+log_dir = {{ barbican.conf.default.log_dir }}
+transport_url = {{ barbican.conf.default.transport_url }}
+host_href = {{ barbican.conf.default.host_href }}
+sql_connection = {{ barbican.conf.default.sql_connection }}
+[certificate]
+[certificate_event]
+[cors]
+[crypto]
+namespace = {{ barbican.conf.crypto.namespace }}
+enabled_crypto_plugins = {{ barbican.conf.crypto.enabled_crypto_plugins }}
+[dogtag_plugin]
+[keystone_authtoken]
+www_authenticate_uri = {{ barbican.conf.keystone_authtoken.www_authenticate_uri }}
+auth_url = {{ barbican.conf.keystone_authtoken.auth_url }}
+memcached_servers = {{ barbican.conf.keystone_authtoken.memcached_servers }}
+auth_type = {{ barbican.conf.keystone_authtoken.auth_type }}
+project_domain_name = {{ barbican.conf.keystone_authtoken.project_domain_name }}
+user_domain_name = {{ barbican.conf.keystone_authtoken.user_domain_name }}
+project_name = {{ barbican.conf.keystone_authtoken.project_name }}
+username = {{ barbican.conf.keystone_authtoken.username }}
+password = {{ barbican.conf.keystone_authtoken.password }}
+service_token_roles_required = {{ barbican.conf.keystone_authtoken.service_token_roles_required }}
+[keystone_notifications]
+[kmip_plugin]
+[matchmaker_redis]
+[oslo_messaging_amqp]
+[oslo_messaging_kafka]
+[oslo_messaging_notifications]
+driver = {{ barbican.conf.oslo_messaging_notifications.driver }}
+transport_url = {{ barbican.conf.oslo_messaging_notifications.transport_url }}
+[oslo_messaging_rabbit]
+[oslo_messaging_zmq]
+[oslo_middleware]
+[oslo_policy]
+policy_file = {{ barbican.conf.oslo_policy.policy_file }}
+policy_default_rule = {{ barbican.conf.oslo_policy.policy_default_rule }}
+[p11_crypto_plugin]
+[queue]
+[quotas]
+[retry_scheduler]
+[secretstore]
+namespace = {{ barbican.conf.secretstore.namespace }}
+enabled_secretstore_plugins = {{ barbican.conf.secretstore.enabled_secretstore_plugins }}
+[simple_crypto_plugin]
+kek = {{ barbican.conf.simple_crypto_plugin.kek }}
+[snakeoil_ca_plugin]
+[ssl]

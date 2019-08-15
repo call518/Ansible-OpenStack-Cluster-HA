@@ -1,0 +1,11 @@
+---
+- hosts:
+    #- openstack-controller
+    #- openstack-network
+    #- openstack-compute
+    #- openstack-novnc
+    all
+  vars:
+    - openstack_yum_repo: "{{ openstack_yum_repo_rocky }}"
+  roles:
+    - openstack-yum-repo

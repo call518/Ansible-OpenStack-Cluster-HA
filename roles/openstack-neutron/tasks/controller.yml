@@ -1,0 +1,270 @@
+---
+# tasks file for openstack-neutron-controller
+
+- name: Create MySQL Database - neutron
+  mysql_db:
+    name: neutron
+    state: present
+  run_once: yes
+
+- name: Create MySQL User - neutron
+  mysql_user:
+    name: "{{ global.openstack.neutron.db_user }}"
+    password: "{{ global.openstack.neutron.db_pass }}"
+    host: "{{ item }}"
+    priv: 'neutron.*:ALL'
+    state: present
+  with_items:
+    - "localhost"
+    - "%"
+  run_once: yes
+
+#########################################################
+
+- name: Install Neutron Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openstack-neutron
+      - openstack-neutron-ml2
+
+#########################################################
+
+- name: Check Exist User - neutron
+  shell: |
+    openstack user show neutron
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_user_neutron
+
+- name: Create User - neutron
+  shell: |
+    openstack user create --domain {{ global.openstack.domain.default.id }} --password {{ global.openstack.neutron.service.pass }} neutron
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_user_neutron.rc != 0
+
+- name: Check Role-Assignment - neutron
+  shell: |
+    openstack role assignment list --user neutron --project {{ global.openstack.neutron.service.project }} --names -f value -c User
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_role_assignment_neutron
+
+- name: Assignment Role to User - neutron
+  shell: |
+    openstack role add --project {{ global.openstack.neutron.service.project }} --user neutron {{ global.openstack.neutron.service.role }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: '"neutron@" + global.openstack.domain.default.name not in check_role_assignment_neutron.stdout_lines'
+
+- name: Check Service - neutron
+  shell: |
+    openstack service show neutron -f value
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_service_neutron
+
+- name: Create Service - neutron
+  shell: |
+    openstack service create --name neutron --description "OpenStack Networking" {{ global.openstack.neutron.service.type }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_service_neutron.rc != 0
+
+#########################################################
+
+- name: Check Exist EndPoint - neutron
+  shell: |
+    openstack endpoint list --service {{ item.service }} --interface {{ item.interface }} --region {{ item.region }} -f value -c 'Region' -c 'Service Name' -c 'Interface'
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  with_items: "{{ neutron.endpoint }}"
+  register: check_exist_endpoint
+
+- name: Create EndPoint - neutron
+  vars:
+    result_check_string: "{{ item.item.region }} {{ item.item.service }} {{ item.item.interface }}"
+  shell: |
+    openstack endpoint create --region {{ item.item.region }} {{ item.item.type }} {{ item.item.interface }} {{ item.item.url }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  with_items: "{{ check_exist_endpoint.results }}"
+  when: "result_check_string not in item.stdout_lines"
+
+#########################################################
+
+- name: Config Neutron - Link /etc/neutron/plugins/ml2/ml2_conf.ini to /etc/neutron/plugin.ini
+  file:
+    src: /etc/neutron/plugins/ml2/ml2_conf.ini
+    dest: /etc/neutron/plugin.ini
+    owner: root
+    group: neutron
+    state: link
+
+- name: Config Neutron - /etc/neutron/neutron.conf
+  template:
+    src: "neutron.conf.j2"
+    dest: "/etc/neutron/neutron.conf"
+    owner: root
+    group: neutron
+    mode: '0640'
+    backup: yes
+  notify: Restart Neutron Service - Controller::ALL
+
+- name: Config Neutron - /etc/neutron/plugins/ml2/ml2_conf.ini
+  template:
+    src: "ml2_conf.ini.j2"
+    dest: "/etc/neutron/plugins/ml2/ml2_conf.ini"
+    owner: root
+    group: neutron
+    mode: '0640'
+    backup: yes
+  notify: Restart Neutron Service - Controller::ALL
+
+- name: Create DB-Tables for Neutron
+  become: yes
+  become_user: neutron
+  shell: neutron-db-manage --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini upgrade head
+  args:
+    executable: /bin/sh
+  run_once: yes
+
+- name: Ensure Neutron Service Running
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - neutron-server
+
+#########################################################
+
+- name: Check Exist External Network - external-network
+  shell: |
+    openstack network show {{ neutron_network.external_network.name }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_exist_external_network
+
+- name: Create External Network - external-network
+  shell: |
+    openstack network create --external --provider-physical-network {{ neutron_network.external_network.provider_physical_network }} --provider-network-type {{ neutron_network.external_network.provider_network_type }} --mtu {{ neutron_network.external_network.mtu }} {{ neutron_network.external_network.name }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_exist_external_network.rc != 0
+
+- name: Check Exist External Subnet - external-subnet
+  shell: |
+    openstack subnet show {{ neutron_network.external_network.subnet.name }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_exist_external_subnet
+
+- name: Create External Subnet - external-subnet
+  vars:
+    option_dhcp: "{% if neutron_network.external_network.subnet.dhcp %}--dhcp{% else %}--no-dhcp{% endif %}"
+  shell: |
+    openstack subnet create {{ neutron_network.external_network.subnet.name }} --network {{ neutron_network.external_network.subnet.network }} --subnet-range {{ neutron_network.external_network.subnet.subnet_range }} --allocation-pool {{ neutron_network.external_network.subnet.allocation_pool }} --gateway {{ neutron_network.external_network.subnet.gateway }} {{ option_dhcp }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_exist_external_subnet.rc != 0
+
+#########################################################
+
+- name: Check Exist Demo Network - demo-network
+  shell: |
+    openstack network show {{ neutron_network.demo_network.name }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_exist_demo_network
+
+- name: Query Project-ID of demo
+  shell: |
+    openstack project show demo -f value -c id
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  register: query_demo_project_id
+
+- name: Create Demo Network - demo-network
+  shell: |
+    openstack network create --provider-network-type {{ neutron_network.demo_network.provider_network_type }} --project {{ query_demo_project_id.stdout }} {{ neutron_network.demo_network.name }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_exist_demo_network.rc != 0
+
+- name: Check Exist Demo Subnet - demo-subnet
+  shell: |
+    openstack subnet show {{ neutron_network.demo_network.subnet.name }}
+  environment: "{{ env.openstack.demo_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_exist_demo_subnet
+
+- name: Create Demo Subnet - demo-subnet
+  vars:
+    option_dhcp: "{% if neutron_network.demo_network.subnet.dhcp %}--dhcp{% else %}--no-dhcp{% endif %}"
+    option_dns: "{% for dns in neutron_network.demo_network.subnet.dns %} --dns-nameserver {{ dns }}{% endfor %}"
+  shell: |
+    openstack subnet create {{ neutron_network.demo_network.subnet.name }} --network {{ neutron_network.demo_network.subnet.network }} --subnet-range {{ neutron_network.demo_network.subnet.subnet_range }} --gateway {{ neutron_network.demo_network.subnet.gateway }} {{ option_dhcp }}{{ option_dns }}
+  environment: "{{ env.openstack.demo_openrc }}"
+  run_once: yes
+  when: check_exist_demo_subnet.rc != 0
+
+- name: Check Exist Demo Router - demo-router
+  shell: |
+    openstack router show {{ neutron_network.demo_network.subnet.router }}
+  environment: "{{ env.openstack.demo_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_exist_demo_router
+
+- name: Create Demo Router - demo-router
+  shell: |
+    openstack router create {{ neutron_network.demo_network.subnet.router }}
+  environment: "{{ env.openstack.demo_openrc }}"
+  run_once: yes
+  when: check_exist_demo_router.rc != 0
+
+- name: Check Exist External-Gateway for Demo Router - external-gateway for demo-router
+  shell: |
+    openstack router show {{ neutron_network.demo_network.subnet.router }} -f value -c external_gateway_info
+  environment: "{{ env.openstack.demo_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_external_gateway_demo_router
+
+- name: Create External-Gateway for Demo Router - external-gateway for demo-router
+  shell: |
+    openstack router set {{ neutron_network.demo_network.subnet.router }} --external-gateway {{ neutron_network.external_network.name }}
+  environment: "{{ env.openstack.demo_openrc }}"
+  run_once: yes
+  when: "check_external_gateway_demo_router.stdout == 'None'"
+
+- name: Add Demo Router to Demo Subnet
+  shell: |
+    openstack router set {{ neutron_network.demo_network.subnet.router }} --external-gateway {{ neutron_network.external_network.name }}
+    openstack router add subnet {{ neutron_network.demo_network.subnet.router }} {{ neutron_network.demo_network.subnet.name }}
+  environment: "{{ env.openstack.demo_openrc }}"
+  run_once: yes
+  #when: "check_external_gateway_demo_router.stdout == 'None'"
+

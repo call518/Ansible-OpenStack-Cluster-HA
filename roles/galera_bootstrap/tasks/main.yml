@@ -1,0 +1,18 @@
+---
+### Bootstrap First Node
+- name: Stop MariaDB on first MariaDB Galera cluster node
+  service: name=mariadb state=stopped
+  when: inventory_hostname == groups['galera-cluster'][global.galera.bootstrap_group_index]
+
+- name: Bootstrap first MariaDB Galera cluster node
+  command: galera_new_cluster
+  when: inventory_hostname == groups['galera-cluster'][global.galera.bootstrap_group_index]
+
+- name: Start MariaDB on first MariaDB Galera cluster node
+  service: name=mariadb state=started
+  when: inventory_hostname == groups['galera-cluster'][global.galera.bootstrap_group_index]
+
+### Restart All Other Nodes
+- name: Restart the other MariaDB Galera cluster nodes
+  service: name=mariadb state=restarted
+  when: inventory_hostname != groups['galera-cluster'][global.galera.bootstrap_group_index]

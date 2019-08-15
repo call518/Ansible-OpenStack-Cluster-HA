@@ -1,0 +1,33 @@
+---
+# defaults file for pacemaker-cluster
+
+pacemaker:
+  virtual_ip:
+    resource_name: "Virtual-IP"
+    #ip: "{{ global.haproxy.vip }}"
+    ip: "10.0.0.200"
+    cidr_netmask: "24"
+    operation:
+      interval: "10s"
+      on_fail: "restart"
+    constraint:
+      location:
+        prefers: "{{ groups['pacemaker-cluster'][0] }}"
+  cluster:
+    name: "openstack-pacemaker"
+    #node_list: "{% for node in groups['pacemaker-cluster'] %}{{ node }}{% if not loop.last %} {% endif %}{% endfor %}"
+    node_list: "{% for host in groups['pacemaker-cluster'] %}{{hostvars[host]['ansible_fqdn']}}{% if not loop.last %} {% endif %}{% endfor %}"
+  centos:
+    major_version: "{{ ansible_distribution_major_version }}"
+  auth:
+    user_id: "hacluster"
+    user_pw: "1234"
+    force: False
+  setup:
+    force: True
+  property:
+    pe_warn_series_max: 1000
+    pe_input_series_max: 1000
+    pe_error_series_max: 1000
+    cluster_recheck_interval: "5min"
+    stonith_enabled: False

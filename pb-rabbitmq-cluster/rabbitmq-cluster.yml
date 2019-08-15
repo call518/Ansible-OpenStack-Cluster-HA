@@ -1,0 +1,10 @@
+---
+- hosts:
+    - rabbitmq-cluster
+  vars_files:
+    - "vars-global.yml"
+    - "vars-sysctl-rabbitmq-cluster.yml"
+  vars:
+  roles:
+    - sysctl
+    - rabbitmq-cluster

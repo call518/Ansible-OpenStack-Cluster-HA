@@ -1,0 +1,34 @@
+---
+# defaults file for ceph-client
+
+ceph_client_admin_keyring: "{{ global.ceph.auth_key.admin }}"
+
+ceph_conf:
+  global:
+    fsid: "{{ global.ceph.fsid }}"
+    network:
+      public: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.ceph.network.public.interface)].ipv4.network }}/{{ hostvars[inventory_hostname]['ansible_%s' | format(global.ceph.network.public.interface)].ipv4.netmask }}"
+      cluster: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.ceph.network.cluster.interface)].ipv4.network }}/{{ hostvars[inventory_hostname]['ansible_%s' | format(global.ceph.network.cluster.interface)].ipv4.netmask }}"
+    mon_initial_members: "ansible-ceph"
+    mon_host: "10.0.0.8"
+    auth:
+      cluster_required: cephx
+      service_required: cephx
+      client_required: cephx
+    osd_pool_default_pg_num: 128
+    osd_pool_default_pgp_num: 128
+    mon_max_pg_per_osd: 300
+    mon_allow_pool_delete: false
+    osd_pool_default_size: 3
+    osd_mount_options_xfs: "rw,noatime,attr2,inode64,noquota"
+
+  client:
+   rbd_cache: true
+   rbd_cache_size: 134217728
+   rbd_cache_max_dirty: 100663296
+   rbd_cache_target_dirty: 67108864
+   rbd_cache_max_dirty_age: 2
+   rbd_cache_writethrough_until_flush: true
+   rbd_concurrent_management_ops: 20
+   admin_socket: "/var/run/ceph/guests/$cluster-$type.$id.$pid.$cctid.asok"
+   log_file: "/var/log/ceph-qemu/qemu-guest-$pid.log"

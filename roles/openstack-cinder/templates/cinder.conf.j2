@@ -1,0 +1,67 @@
+[DEFAULT]
+log_dir = {{ cinder.conf.default.log_dir }}
+my_ip = {{ cinder.conf.default.my_ip }}
+osapi_volume_listen = {{ cinder.conf.default.osapi_volume_listen }}
+transport_url = {{ cinder.conf.default.transport_url }}
+auth_strategy = {{ cinder.conf.default.auth_strategy }}
+enabled_backends = {{ cinder.conf.default.enabled_backends }}
+volume_usage_audit_period = {{ cinder.conf.default.volume_usage_audit_period }}
+volume_name_template = {{ cinder.conf.default.volume_name_template }}
+glance_api_servers = {{ cinder.conf.default.glance_api_servers }}
+scheduler_max_attempts = {{ cinder.conf.default.scheduler_max_attempts }}
+backup_driver = {{ cinder.conf.default.backup_driver }}
+backup_ceph_user = {{ cinder.conf.default.backup_ceph_user }}
+backup_ceph_conf = {{ cinder.conf.default.backup_ceph_conf }}
+backup_ceph_chunk_size = {{ cinder.conf.default.backup_ceph_chunk_size }}
+backup_ceph_pool = {{ cinder.conf.default.backup_ceph_pool }}
+backup_ceph_stripe_unit = {{ cinder.conf.default.backup_ceph_stripe_unit }}
+backup_ceph_stripe_count = {{ cinder.conf.default.backup_ceph_stripe_count }}
+restore_discard_excess_bytes = {{ cinder.conf.default.restore_discard_excess_bytes }}
+[ceph]
+volume_driver = {{ cinder.conf.ceph.volume_driver }}
+rbd_cluster_name = {{ cinder.conf.ceph.rbd_cluster_name }}
+rbd_pool = {{ cinder.conf.ceph.rbd_pool }}
+rbd_user = {{ cinder.conf.ceph.rbd_user }}
+rbd_ceph_conf = {{ cinder.conf.ceph.rbd_ceph_conf }}
+rbd_flatten_volume_from_snapshot = {{ cinder.conf.ceph.rbd_flatten_volume_from_snapshot }}
+rbd_secret_uuid = {{ cinder.conf.ceph.rbd_secret_uuid }}
+rbd_max_clone_depth = {{ cinder.conf.ceph.rbd_max_clone_depth }}
+rbd_store_chunk_size = {{ cinder.conf.ceph.rbd_store_chunk_size }}
+rados_connect_timeout = {{ cinder.conf.ceph.rados_connect_timeout }}
+[backend]
+[backend_defaults]
+[brcd_fabric_example]
+[cisco_fabric_example]
+[coordination]
+[fc-zone-manager]
+[key_manager]
+[barbican]
+[cors]
+[cors.subdomain]
+[database]
+connection = {{ cinder.conf.database.connection }}
+[key_manager]
+[keystone_authtoken]
+www_authenticate_uri = {{ cinder.conf.keystone_authtoken.www_authenticate_uri }}
+auth_url = {{ cinder.conf.keystone_authtoken.auth_url }}
+memcached_servers = {{ cinder.conf.keystone_authtoken.memcached_servers }}
+auth_type = {{ cinder.conf.keystone_authtoken.auth_type }}
+project_domain_name = {{ cinder.conf.keystone_authtoken.project_domain_name }}
+user_domain_name = {{ cinder.conf.keystone_authtoken.user_domain_name }}
+project_name = {{ cinder.conf.keystone_authtoken.project_name }}
+username = {{ cinder.conf.keystone_authtoken.username }}
+password = {{ cinder.conf.keystone_authtoken.password }}
+[matchmaker_redis]
+[oslo_concurrency]
+lock_path = {{ cinder.conf.oslo_concurrency.lock_path }}
+[oslo_messaging_amqp]
+[oslo_messaging_notifications]
+driver = {{ cinder.conf.oslo_messaging_notifications.driver }}
+transport_url = {{ cinder.conf.oslo_messaging_notifications.transport_url }}
+[oslo_messaging_rabbit]
+[oslo_messaging_zmq]
+[oslo_middleware]
+[oslo_policy]
+[oslo_reports]
+[oslo_versionedobjects]
+[ssl]

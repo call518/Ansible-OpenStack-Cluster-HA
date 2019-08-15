@@ -1,0 +1,76 @@
+---
+# defaults file for openstack-keystone
+
+#random_host: "{{groups['openstack-keystone'] | random }}"
+
+httpd_default_listen: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.horizon.listen_interface)].ipv4.address }}"
+
+keystone_token_provider: fernet
+
+keys_path_base: "/etc/keystone"
+keys_local_tmp_path: "/tmp/keyston_keys"
+
+keystone_wsgi_conf:
+  bind_address: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.keystone.listen_interface)].ipv4.address }}"
+  processes: 5
+  threads: 1
+  user: keystone
+  group: keystone
+  LimitRequestBody: 114688
+
+keystone:
+  conf:
+    default:
+      log_dir: /var/log/keystone
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+    assignment:
+    auth:
+    cache:
+      memcache_servers: "{% for host in groups['memcached'] %}{{ host }}:{{ global.memcached.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+    catalog:
+      driver: sql
+    cors:
+    cors.subdomain:
+    credential:
+    database:
+      connection: "mysql+pymysql://{{ global.openstack.keystone.db_user }}:{{ global.openstack.keystone.db_pass }}@{{ global.haproxy.fqdn }}/keystone"
+    domain_config:
+    endpoint_filter:
+    endpoint_policy:
+    eventlet_server:
+      public_bind_host: "{{ ansible_hostname }}"
+      admin_bind_host: "{{ ansible_hostname }}"
+    federation:
+    fernet_tokens:
+    identity:
+      driver: sql
+    dentity_mapping:
+    kvs:
+    ldap:
+    matchmaker_redis:
+    memcache:
+      servers: "{% for host in groups['memcached'] %}{{ host }}:{{ global.memcached.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+    oauth1:
+    os_inherit:
+    oslo_messaging_amqp:
+    oslo_messaging_notifications:
+      driver: messagingv2
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+    oslo_messaging_rabbit:
+    oslo_messaging_zmq:
+    oslo_middleware:
+    oslo_policy:
+    paste_deploy:
+    policy:
+    profiler:
+    resource:
+    revoke:
+    role:
+    saml:
+    security_compliance:
+    shadow_users:
+    signing:
+    token:
+      provider: "{{ keystone_token_provider }}"
+    tokenless_auth:
+    trust:

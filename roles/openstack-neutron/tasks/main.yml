@@ -1,0 +1,15 @@
+---
+# tasks file for openstack-neutron
+
+- import_tasks: controller.yml
+  tags: 
+    - controller
+
+- import_tasks: network.yml
+  tags:
+    - network
+
+- import_tasks: compute.yml
+  tags:
+    - compute
+

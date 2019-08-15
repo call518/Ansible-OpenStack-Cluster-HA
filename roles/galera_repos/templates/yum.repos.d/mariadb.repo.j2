@@ -1,0 +1,13 @@
+[mariadb-main]
+name = MariaDB Server
+baseurl = https://downloads.mariadb.com/MariaDB/mariadb-{{ mariadb_release }}/yum/centos/$releasever/$basearch
+gpgkey = https://downloads.mariadb.com/MariaDB/RPM-GPG-KEY-MariaDB
+gpgcheck = 1
+enabled = 1
+
+[mariadb-tools]
+name = MariaDB Tools
+baseurl = https://downloads.mariadb.com/Tools/centos/$releasever/$basearch
+gpgkey = https://downloads.mariadb.com/Tools/MariaDB-Enterprise-GPG-KEY
+gpgcheck = 1
+enabled = 1

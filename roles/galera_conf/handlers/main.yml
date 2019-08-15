@@ -1,0 +1,11 @@
+---
+#- name: Restart MariaDB Galera cluster
+#  service: name=mariadb state=restarted
+#  when: bootstrapped
+
+- name: Restart MariaDB Galera cluster
+  systemd:
+    name: mariadb
+    state: restarted
+    daemon_reload: yes
+  when: bootstrapped

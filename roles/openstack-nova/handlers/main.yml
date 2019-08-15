@@ -1,0 +1,36 @@
+---
+# handlers file for openstack-nova
+
+- name: Restart Nova Service - Controller
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - openstack-nova-api
+    - openstack-nova-consoleauth
+    - openstack-nova-scheduler
+    - openstack-nova-conductor
+    - openstack-nova-metadata-api
+    #- openstack-nova-novncproxy
+
+- name: Restart Nova Service - Compute
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - openstack-nova-compute
+    #- openstack-nova-novncproxy
+
+- name: Restart noVNC Service - noVNC
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - openstack-nova-consoleauth
+    - openstack-nova-novncproxy
+
+- name: Restart HTTPd Service
+  systemd:
+    name: httpd
+    state: restarted
+

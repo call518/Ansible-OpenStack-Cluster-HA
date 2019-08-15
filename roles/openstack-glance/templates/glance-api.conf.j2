@@ -1,0 +1,54 @@
+[DEFAULT]
+log_dir = {{ glance.conf.api.default.log_dir }}
+bind_host = {{ glance.conf.api.default.bind_host }}
+registry_host = {{ glance.conf.api.default.registry_host }}
+transport_url = {{ glance.conf.api.default.transport_url }}
+enable_v1_api = {{ glance.conf.api.default.enable_v1_api }}
+enable_v2_api = {{ glance.conf.api.default.enable_v1_api }}
+http_keepalive = {{ glance.conf.api.default.http_keepalive }}
+digest_algorithm = {{ glance.conf.api.default.digest_algorithm }}
+show_multiple_locations = {{ glance.conf.api.default.show_multiple_locations }}
+show_image_direct_url = {{ glance.conf.api.default.show_image_direct_url }}
+hw_scsi_model = {{ glance.conf.api.default.hw_scsi_model }}
+hw_disk_bus = {{ glance.conf.api.default.hw_disk_bus }}
+hw_qemu_guest_agent = {{ glance.conf.api.default.hw_qemu_guest_agent }}
+os_require_quiesce = {{ glance.conf.api.default.os_require_quiesce }}
+[cors]
+[database]
+connection = {{ glance.conf.api.database.connection }}
+[glance_store]
+stores = {{ glance.conf.api.glance_store.stores }}
+default_store = {{ glance.conf.api.glance_store.default_store }}
+rbd_store_chunk_size = {{ glance.conf.api.glance_store.rbd_store_chunk_size }}
+rbd_store_pool = {{ glance.conf.api.glance_store.rbd_store_pool }}
+rbd_store_user = {{ glance.conf.api.glance_store.rbd_store_user }}
+rbd_store_ceph_conf = {{ glance.conf.api.glance_store.rbd_store_ceph_conf }}
+[image_format]
+[keystone_authtoken]
+www_authenticate_uri  = {{ glance.conf.api.keystone_authtoken.www_authenticate_uri }}
+auth_url = {{ glance.conf.api.keystone_authtoken.auth_url }}
+memcached_servers = {{ glance.conf.api.keystone_authtoken.memcached_servers }}
+token_cache_time = {{ glance.conf.api.keystone_authtoken.token_cache_time }}
+auth_type = {{ glance.conf.api.keystone_authtoken.auth_type }}
+project_domain_name = {{ glance.conf.api.keystone_authtoken.project_domain_name }}
+user_domain_name = {{ glance.conf.api.keystone_authtoken.user_domain_name }}
+project_name = {{ glance.conf.api.keystone_authtoken.project_name }}
+username = {{ glance.conf.api.keystone_authtoken.username }}
+password = {{ glance.conf.api.keystone_authtoken.password }}
+[matchmaker_redis]
+[oslo_concurrency]
+[oslo_messaging_amqp]
+[oslo_messaging_kafka]
+[oslo_messaging_notifications]
+driver = {{ glance.conf.api.oslo_messaging_notifications.driver }}
+transport_url = {{ glance.conf.api.oslo_messaging_notifications.transport_url }}
+[oslo_messaging_rabbit]
+[oslo_messaging_zmq]
+[oslo_middleware]
+[oslo_policy]
+[paste_deploy]
+flavor = {{ glance.conf.api.paste_deploy.flavor }}
+[profiler]
+[store_type_location_strategy]
+[task]
+[taskflow_executor]

@@ -1,0 +1,50 @@
+---
+# tasks file for ceph-client
+
+#- debug: var=openstack_service
+
+- name: Config Yum Repo. for CEPH
+  template:
+    src: "ceph.repo.j2"
+    dest: "/etc/yum.repos.d/ceph.repo"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+
+- name: Install EPEL-Release Packages
+  yum:
+    name: "epel-release"
+    state: installed
+
+- name: Install CEPH Client Packages
+  yum:
+    name: "{{ packages }}"
+    state: installed
+    enablerepo: ceph
+    disablerepo: centos-ceph-luminous
+  vars:
+    packages:
+      - ceph-common
+      - python-rbd
+      - libradosstriper1
+
+- name: Config CEPH - /etc/ceph/ceph.conf
+  template:
+    src: "ceph.conf.j2"
+    dest: "/etc/ceph/ceph.conf"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+
+- name: Config CEPH Keyring - admin
+  template:
+    src: "ceph.client.admin.keyring.j2"
+    dest: "/etc/ceph/ceph.client.admin.keyring"
+    owner: root
+    group: root
+    mode: '0600'
+    backup: yes
+  when: global.ceph.admin_privilges == True
+

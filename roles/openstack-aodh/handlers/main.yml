@@ -1,0 +1,12 @@
+---
+# handlers file for openstack-aodh
+
+- name: Restart Aodh Service
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - openstack-aodh-api
+    - openstack-aodh-evaluator
+    - openstack-aodh-notifier
+    - openstack-aodh-listener

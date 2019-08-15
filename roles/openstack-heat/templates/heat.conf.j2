@@ -1,0 +1,74 @@
+[DEFAULT]
+log_dir = {{ heat.conf.default.log_dir }}
+transport_url = {{ heat.conf.default.transport_url }}
+heat_metadata_server_url = {{ heat.conf.default.heat_metadata_server_url }}
+heat_waitcondition_server_url = {{ heat.conf.default.heat_waitcondition_server_url }}
+stack_domain_admin = {{ heat.conf.default.stack_domain_admin }}
+stack_domain_admin_password = {{ heat.conf.default.stack_domain_admin_password }}
+stack_user_domain_name = {{ heat.conf.default.stack_user_domain_name }}
+[auth_password]
+[clients]
+[clients_aodh]
+[clients_barbican]
+[clients_ceilometer]
+[clients_cinder]
+[clients_designate]
+[clients_glance]
+[clients_heat]
+[clients_keystone]
+auth_uri = {{ heat.conf.clients_keystone.auth_uri }}
+[clients_magnum]
+[clients_manila]
+[clients_mistral]
+[clients_monasca]
+[clients_neutron]
+[clients_nova]
+[clients_sahara]
+[clients_senlin]
+[clients_swift]
+[clients_trove]
+[clients_zaqar]
+[cors]
+[cors.subdomain]
+[database]
+backend = {{ heat.conf.database.backend }}
+connection = {{ heat.conf.database.connection }}
+[keystone_authtoken]
+www_authenticate_uri = {{ heat.conf.keystone_authtoken.www_authenticate_uri }}
+auth_url = {{ heat.conf.keystone_authtoken.auth_url }}
+memcached_servers = {{ heat.conf.keystone_authtoken.memcached_servers }}
+auth_type = {{ heat.conf.keystone_authtoken.auth_type }}
+project_domain_name = {{ heat.conf.keystone_authtoken.project_domain_name }}
+user_domain_name = {{ heat.conf.keystone_authtoken.user_domain_name }}
+project_name = {{ heat.conf.keystone_authtoken.project_name }}
+username = {{ heat.conf.keystone_authtoken.username }}
+password = {{ heat.conf.keystone_authtoken.password }}
+[ec2authtoken]
+auth_uri = {{ heat.conf.ec2authtoken.auth_uri }}
+[eventlet_opts]
+[heat_api]
+bind_host = {{ heat.conf.heat_api.bind_host }}
+[heat_api_cfn]
+bind_host = {{ heat.conf.heat_api_cfn.bind_host }}
+[heat_api_cloudwatch]
+bind_host = {{ heat.conf.heat_api_cloudwatch.bind_host }}
+[matchmaker_redis]
+[oslo_messaging_amqp]
+[oslo_messaging_notifications]
+driver = {{ heat.conf.oslo_messaging_notifications.driver }}
+transport_url = {{ heat.conf.oslo_messaging_notifications.transport_url }}
+[oslo_messaging_rabbit]
+[oslo_messaging_zmq]
+[oslo_middleware]
+[oslo_policy]
+[paste_deploy]
+[profiler]
+[revision]
+[ssl]
+[trustee]
+auth_type = {{ heat.conf.trustee.auth_type }}
+auth_url = {{ heat.conf.trustee.auth_url }}
+username = {{ heat.conf.trustee.username }}
+password = {{ heat.conf.trustee.password }}
+user_domain_name = {{ heat.conf.trustee.user_domain_name }}
+[volumes]

@@ -1,0 +1,48 @@
+---
+# tasks file for haproxy
+
+- import_tasks: config-xinetd-for-galera.yml
+
+- name: Config Syslog for HAProxy (Enable logging of HAProxy in rsyslog)
+  template:
+    src: etc-rsyslog.d-haproxy.conf.j2
+    dest: /etc/rsyslog.d/haproxy.conf
+    owner: root
+    group: root
+    mode: '0644'
+  register: config_syslog_haproxy
+
+- name: Restart Syslog Service
+  systemd:
+    name: rsyslog
+    #daemon_reload: yes
+    state: restarted
+  when: config_syslog_haproxy.changed == True
+
+- name: Install HAProxy Package
+  yum:
+    name: haproxy
+    state: installed
+
+- name: Ensure HAProxy Service Running
+  systemd:
+    name: haproxy
+    state: started
+
+- name: Config HAProxy (haproxy.cfg)
+  template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: '0644'
+  register: config_haproxy_cfg
+  #notify: Restart Syslog Service
+
+- name: Restart HAProxy Service
+  systemd:
+    name: haproxy
+    #daemon_reload: yes
+    state: restarted
+  when: config_haproxy_cfg.changed == True
+

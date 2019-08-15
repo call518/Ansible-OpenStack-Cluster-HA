@@ -1,0 +1,321 @@
+---
+# tasks file for openstack-keystone
+
+- name: Create MySQL Database - keystone
+  mysql_db:
+    name: keystone
+    state: present
+  #when: inventory_hostname == groups['openstack-controller'][0]
+  run_once: yes
+  #when: inventory_hostname == random_host
+
+- name: Create MySQL User - keystone
+  mysql_user:
+    name: "{{ global.openstack.keystone.db_user }}"
+    password: "{{ global.openstack.keystone.db_pass }}"
+    host: "{{ item }}"
+    priv: 'keystone.*:ALL'
+    state: present
+  with_items:
+    - "localhost"
+    - "%"
+  run_once: yes
+  #when: inventory_hostname == groups['openstack-controller'][0]
+  #when: inventory_hostname == random_host
+
+#########################################################
+
+- name: Install Keystone Packages
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openstack-keystone
+      - python-openstackclient
+      - httpd
+      - mod_wsgi
+
+- name: Check Default HTTPd Welcome Site
+  stat:
+    path: "/etc/httpd/conf.d/welcome.conf"
+  register: check_file_httpd_welcome
+
+- name: Disable Default HTTPd Welcome Site
+  shell: |
+    mv /etc/httpd/conf.d/welcome.conf /etc/httpd/conf.d/welcome.backup
+  when: check_file_httpd_welcome.stat.exists
+  notify: Restart HTTPd Service
+
+- name: Config /etc/httpd/conf/httpd.conf
+  template:
+    src: "httpd.conf.j2"
+    dest: "/etc/httpd/conf/httpd.conf"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  #register: config_httpd
+  notify: Restart HTTPd Service
+
+- name: Config /etc/httpd/conf.d/server-status.conf
+  template:
+    src: "server-status.conf.j2"
+    dest: "/etc/httpd/conf.d/server-status.conf"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  #register: config_httpd_status
+  notify: Restart HTTPd Service
+
+#########################################################
+
+- name: Config keystone.conf
+  template:
+    src: "keystone.conf.j2"
+    dest: "/etc/keystone/keystone.conf"
+    owner: root
+    group: keystone
+    mode: '0640'
+    backup: yes
+  register: config_keystone
+  notify: Restart HTTPd Service
+
+#- name: Config /etc/httpd/conf/httpd.conf - ServerName
+#  lineinfile:
+#    path: /etc/httpd/conf/httpd.conf
+#    insertafter: '^#ServerName'
+#    line: "ServerName {{ global.haproxy.fqdn }}:80"
+#    state: present
+#    backup: yes
+#  #register: config_httpd_servername
+
+- name: Config /etc/httpd/conf.d/wsgi-keystone.conf
+  template:
+    src: "wsgi-keystone.conf.j2"
+    dest: "/etc/httpd/conf.d/wsgi-keystone.conf"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  #register: config_httpd_wsgi_keystone
+  notify: Restart HTTPd Service
+
+#- name: Check Already Created DB-Tables for keystone
+#  shell: |
+#    if [[ $(mysql -e 'use keystone; show tables' -Ns | wc -l) -ne 0 ]];
+#    then
+#      exit 0
+#    else
+#      exit 99
+#    fi
+#  register: check_db_tables_exist
+#  #failed_when: check_db_tables_exist.rc != 0
+#  run_once: yes
+#  ignore_errors: yes
+
+- name: Create DB-Tables for keystone
+  become: yes
+  become_user: keystone
+  shell: keystone-manage db_sync
+  args:
+    executable: /bin/sh
+  run_once: yes
+  #when: check_db_tables_exist.rc != 0
+
+#########################################################
+
+- name: Initialize Fernet-Keys
+  shell: |
+    keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone
+  run_once: yes
+
+- name: Sync(Pull) - Fernet-Keys from First Host
+  synchronize:
+    src: "{{ keys_path_base }}/fernet-keys"
+    dest: "{{ keys_local_tmp_path }}"
+    mode: pull
+  run_once: yes
+
+- name: Sync(Push) - Fernet-Keys to ALL Hosts
+  synchronize:
+    src: "{{ keys_local_tmp_path }}/fernet-keys"
+    dest: "{{ keys_path_base }}"
+    mode: push
+  notify: Restart HTTPd Service
+
+#########################################################
+
+- name: Initialize Credential-Keys
+  shell: |
+    keystone-manage credential_setup --keystone-user keystone --keystone-group keystone
+  run_once: yes
+
+- name: Sync(Pull) - Credential-Keys from First Host
+  synchronize:
+    src: "{{ keys_path_base }}/credential-keys"
+    dest: "{{ keys_local_tmp_path }}"
+    mode: pull
+  run_once: yes
+
+- name: Sync(Push) - Credential-Keys to ALL Hosts
+  synchronize:
+    src: "{{ keys_local_tmp_path }}/credential-keys"
+    dest: "{{ keys_path_base }}"
+    mode: push
+  notify: Restart HTTPd Service
+
+#########################################################
+
+#- name: Check File Exist - /root/admin-openrc
+#  stat:
+#    path: "/root/admin-openrc"
+#  register: check_file_admin_openrc
+#  changed_when: false
+
+#- debug: var=check_file_admin_openrc.stat
+
+- name: Check Exist Project - admin
+  shell: |
+    openstack project show admin
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_project_admin
+
+- name: Bootstrap Keystone Service
+  shell: |
+    keystone-manage --debug bootstrap \
+    --bootstrap-username {{ global.openstack.keystone.service.user }} \
+    --bootstrap-password {{ global.openstack.keystone.service.pass }} \
+    --bootstrap-project-name {{ global.openstack.keystone.service.project }} \
+    --bootstrap-role-name {{ global.openstack.keystone.service.role }} \
+    --bootstrap-service-name {{ global.openstack.keystone.service.name }} \
+    --bootstrap-region-id {{ global.openstack.keystone.service.region }} \
+    --bootstrap-admin-url http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}/ \
+    --bootstrap-internal-url http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}/ \
+    --bootstrap-public-url http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}/
+  run_once: yes
+  #register: run_bootstrap_keystone
+  when: check_project_admin.rc != 0
+
+#- debug: msg="Notify - Restat HTTPd Service"
+#  changed_when: True
+#  notify: Restart HTTPd Service
+#  when: run_bootstrap_keystone.changed == True
+
+- name: Ensure HTTPd Running
+  systemd:
+    name: httpd
+    state: started
+    enabled: yes
+
+- name: Create /root/admin-openrc
+  template:
+    src: "admin-openrc.j2"
+    dest: "/root/admin-openrc"
+    owner: root
+    group: root
+    mode: '0600'
+    backup: yes
+
+- name: Check Exist Project - service
+  shell: |
+    openstack project show service
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_project_service
+
+#- debug: var=check_project_service
+
+- name: Create Project - service
+  shell: |
+    openstack project create --domain {{ global.openstack.domain.default.id }} --description "Service Project" service
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_project_service.rc != 0
+
+- name: Check Exist Role - user
+  shell: |
+    openstack role show user
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_role_user
+
+#- debug: var=check_role_user
+
+- name: Create Role - user
+  shell: |
+    openstack role create user
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_role_user.rc != 0
+
+#########################################################
+
+- name: Check Exist Project - demo
+  shell: |
+    openstack project show demo
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_project_demo
+
+- name: Create Project - demo
+  shell: |
+    openstack project create --domain {{ global.openstack.domain.default.id }} --description "Demo Project" demo
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_project_demo.rc != 0
+
+- name: Check Exist User - demo
+  shell: |
+    openstack user show demo
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_user_demo
+
+- name: Create User - demo
+  shell: |
+    openstack user create --domain {{ global.openstack.domain.default.id }} --password {{ global.openstack.keystone.demo_user_pass }} demo
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_user_demo.rc != 0
+
+- name: Check Role-Assignment - demo
+  shell: |
+    openstack role assignment list --user demo --project demo --names -f value -c User
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_role_assignment_demo
+
+#- debug: var=check_role_assignment_demo
+
+- name: Assignment Role('user') to User - demo
+  shell: |
+    openstack role add --project demo --user demo user
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  #when: '"demo@" + global.openstack.domain.default.name not in check_role_assignment_demo.stdout'
+  when: '"demo@" + global.openstack.domain.default.name not in check_role_assignment_demo.stdout_lines'
+
+- name: Create /root/demo-openrc
+  template:
+    src: "demo-openrc.j2"
+    dest: "/root/demo-openrc"
+    owner: root
+    group: root
+    mode: '0600'
+    backup: yes
+

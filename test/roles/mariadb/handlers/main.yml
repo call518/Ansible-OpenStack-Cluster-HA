@@ -1,0 +1,8 @@
+# roles/mariadb/handlers/main.yml
+---
+
+- name: restart mariadb
+  service:
+    name: '{{ mariadb_service }}'
+    state: restarted
+

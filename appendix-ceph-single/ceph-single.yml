@@ -1,0 +1,8 @@
+---
+- hosts:
+    - ceph-single-test
+  vars_files:
+    - "vars-interface.yml"
+    - "vars-ceph-single.yml"
+  roles:
+    - ceph-single

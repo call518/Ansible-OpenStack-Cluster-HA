@@ -1,0 +1,1 @@
+[{% for plugin in rabbitmq_plugins %}{{ plugin }}{% if not loop.last %}, {% endif %}{% endfor %}].

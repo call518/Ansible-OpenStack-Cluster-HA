@@ -1,0 +1,4 @@
+---
+interface:
+  public: eth1
+  cluster: eth1

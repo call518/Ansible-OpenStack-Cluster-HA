@@ -1,0 +1,85 @@
+---
+# defaults file for openstack-gnocchi
+
+gnocchi:
+  endpoint:
+    - { region: "{{ global.openstack.gnocchi.service.region }}", type: "{{ global.openstack.gnocchi.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.gnocchi }}", interface: "admin", service: "{{ global.openstack.gnocchi.service.name }}" }
+    - { region: "{{ global.openstack.gnocchi.service.region }}", type: "{{ global.openstack.gnocchi.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.gnocchi }}", interface: "internal", service: "{{ global.openstack.gnocchi.service.name }}" }
+    - { region: "{{ global.openstack.gnocchi.service.region }}", type: "{{ global.openstack.gnocchi.service.type }}", url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.gnocchi }}", interface: "public", service: "{{ global.openstack.gnocchi.service.name }}" }
+  archive_policy:
+    - { name: "custom-mean", aggregation_method: "mean", definition: [{ granularity: "300s", timespan: "365d" }, { granularity: "3600s", timespan: "365d" }, { granularity: "1d", timespan: "365d" }]}
+    - { name: "custom-sum", aggregation_method: "sum", definition: [{ granularity: "300s", timespan: "365d" }, { granularity: "3600s", timespan: "365d" }, { granularity: "1d", timespan: "365d" }]}
+  archive_policy_rule:
+    - { name: "custom-cpu_util", metric_pattern: "custom_cpu_util", archive_policy_name: "custom-mean" }
+    - { name: "custom-memory.usage.pcnt", metric_pattern: "custom_memory.usage.pcnt", archive_policy_name: "custom-mean" }
+    - { name: "custom-disk.device.read.bytes.rate", metric_pattern: "custom_disk.device.read.bytes.rate", archive_policy_name: "custom-sum" }
+    - { name: "custom-disk.device.write.bytes.rate", metric_pattern: "custom_disk.device.write.bytes.rate", archive_policy_name: "custom-sum" }
+  uwsgi:
+    version: "2.0.18"
+  conf:
+    default:
+      log_dir: "/var/log/gnocchi"
+      transport_url: "rabbit://{% for host in groups['rabbitmq-cluster'] %}{{ global.rabbitmq.openstack_user_name }}:{{ global.rabbitmq.openstack_user_pass }}@{{ host }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      coordination_url: "zookeeper://{% for host in groups['zookeeper-cluster'] %}{{ host }}:{{ global.zookeeper.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+    api:
+      auth_mode: keystone
+      max_limit: 1000
+      operation_timeout: 10
+      host: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.gnocchi.listen_interface)].ipv4.address }}"
+      port: 8041
+      uwsgi_mode: http
+    archive_policy:
+      default_aggregation_methods: "mean,min,max,sum,std,median,count,last,95pct"
+    database:
+      backend: sqlalchemy
+    indexer:
+      url: "mysql+pymysql://{{ global.openstack.gnocchi.db_user }}:{{ global.openstack.gnocchi.db_pass }}@{{ global.haproxy.fqdn }}/gnocchi"
+    keystone_authtoken:
+      www_authenticate_uri: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      auth_url: "http://{{ global.haproxy.fqdn }}:{{ global.openstack.service_port.keystone }}/v{{ global.openstack.keystone.api.version }}"
+      memcached_servers: "{% for host in groups['memcached'] %}{{ host }}:{{ global.memcached.port }}{% if not loop.last %},{% endif %}{% endfor %}{{''}}"
+      token_cache_time: 300
+      auth_type: password
+      project_domain_name: "{{ global.openstack.domain.default.name }}"
+      user_domain_name: "{{ global.openstack.domain.default.name }}"
+      project_name: "{{ global.openstack.gnocchi.service.project }}"
+      username: gnocchi
+      password: "{{ global.openstack.gnocchi.service.pass }}"
+      interface: internalURL
+      region_name: "{{ global.openstack.gnocchi.service.region }}"
+    metricd:
+      workers: 3
+      metric_processing_delay: 5
+    storage:
+      file:
+        driver: file
+        file_basepath: "/var/lib/gnocchi"
+      ceph:
+        driver: ceph
+        ceph_pool: gnocchi
+        ceph_username: gnocchi
+        ceph_keyring: "/etc/ceph/ceph.client.gnocchi.keyring"
+        ceph_conffile: "/etc/ceph/ceph-gnocchi.conf"
+
+ceph_client_gnocchi_keyring: "{{ global.ceph.auth_key.gnocchi }}"
+
+ceph_conf:
+  global:
+    fsid: "{{ global.ceph.fsid }}"
+    network:
+      public: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.ceph.network.public.interface)].ipv4.network }}/{{ hostvars[inventory_hostname]['ansible_%s' | format(global.ceph.network.public.interface)].ipv4.netmask }}"
+      cluster: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.ceph.network.cluster.interface)].ipv4.network }}/{{ hostvars[inventory_hostname]['ansible_%s' | format(global.ceph.network.cluster.interface)].ipv4.netmask }}"
+    mon_initial_members: "ansible-ceph"
+    mon_host: "10.0.0.8"
+    auth:
+      cluster_required: cephx
+      service_required: cephx
+      client_required: cephx
+  client:
+   rbd_cache: true
+   rbd_cache_size: 134217728
+   rbd_cache_max_dirty: 100663296
+   rbd_cache_target_dirty: 67108864
+   rbd_cache_max_dirty_age: 2
+   rbd_cache_writethrough_until_flush: true
+   rbd_concurrent_management_ops: 20

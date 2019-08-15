@@ -1,0 +1,118 @@
+---
+# tasks file for openstack-nova-compute
+
+- name: Install Nova Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openstack-nova-compute
+      - libvirt-daemon
+
+- name: Ensure Libvirt Service Running
+  systemd:
+    name: "libvirtd"
+    state: started
+    enabled: yes
+
+#########################################################
+
+- name: Config CEPH Keyring - cinder
+  template:
+    src: "ceph.client.cinder.keyring.j2"
+    dest: "/etc/ceph/ceph.client.cinder.keyring"
+    owner: root
+    group: nova
+    mode: '0640'
+    backup: yes
+
+- name: Create secret.xml for Libvirt-Secret
+  template:
+    src: "secret.xml.j2"
+    dest: "{{ global.ceph.libvirtd.secret.xml_file_path }}"
+    owner: root
+    group: root
+    mode: '0600'
+    backup: yes
+
+- name: Check Define Libvirt-Secret UUID
+  shell: |
+    virsh secret-list
+  changed_when: false
+  failed_when: no
+  register: check_define_secret_uuid
+
+#- debug: var=check_secret_uuid
+
+- name: Define Libvirt-Secret UUID
+  shell: |
+    virsh secret-define --file {{ global.ceph.libvirtd.secret.xml_file_path }}
+  when: 'check_define_secret_uuid.failed == false and global.ceph.libvirtd.secret.uuid not in check_define_secret_uuid.stdout'
+
+- name: Check Value of Libvirt-Secret UUID
+  shell: |
+    virsh secret-get-value --secret {{ global.ceph.libvirtd.secret.uuid }}
+  changed_when: false
+  failed_when: no
+  register: check_secret_uuid_value
+
+#- debug: var=check_secret_uuid_value
+
+- name: Set Value of Libvirt-Secret UUID
+  shell: |
+    virsh secret-set-value --secret {{ global.ceph.libvirtd.secret.uuid }} --base64 {{ global.ceph.auth_key.cinder }}
+  when: 'check_secret_uuid_value.failed == false and global.ceph.auth_key.cinder != check_secret_uuid_value.stdout'
+
+#########################################################
+
+- name: Create a Directory - /var/run/ceph/guests
+  file:
+    path: /var/run/ceph/guests
+    state: directory
+    owner: qemu
+    group: qemu
+    mode: '0777'
+
+- name: Create a Directory - /var/log/ceph-qemu/
+  file:
+    path: /var/log/ceph-qemu
+    state: directory
+    owner: qemu
+    group: qemu
+    mode: '0755'
+
+#########################################################
+
+- name: Config Nova - /etc/nova/nova.conf
+  template:
+    src: "nova.conf.j2"
+    dest: "/etc/nova/nova.conf"
+    owner: root
+    group: nova
+    mode: '0640'
+    backup: yes
+  notify: Restart Nova Service - Compute
+
+- name: Ensure Nova Service Running
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - openstack-nova-compute
+    #- openstack-nova-novncproxy
+
+#########################################################
+
+- name: Discover Compute Hosts
+  become: yes
+  become_user: nova
+  environment: "{{ env.openstack.admin_openrc }}"
+  shell: |
+    nova-manage cell_v2 discover_hosts --verbose
+  args:
+    executable: /bin/sh
+  #changed_when: false
+  #failed_when: no
+  run_once: yes

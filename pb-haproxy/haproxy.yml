@@ -1,0 +1,10 @@
+---
+- hosts:
+    - haproxy
+  gather_facts: yes
+  vars_files:
+    - "vars-global.yml"
+    - "vars-sysctl-haproxy.yml"
+  roles:
+    - sysctl
+    - haproxy

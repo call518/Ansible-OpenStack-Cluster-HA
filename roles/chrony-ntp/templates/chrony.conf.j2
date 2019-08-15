@@ -1,0 +1,14 @@
+{% for ntp_server in ntp_servers %}
+server {{ ntp_server }} iburst
+{% endfor %}
+
+driftfile /var/lib/chrony/drift
+makestep 1.0 3
+rtcsync
+
+{% for allow in allows %}
+allow {{ allow }}
+{% endfor %}
+
+local stratum 3
+logdir /var/log/chrony

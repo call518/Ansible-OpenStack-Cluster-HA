@@ -1,0 +1,13 @@
+---
+- hosts:
+    #- openstack-controller
+    #- openstack-network
+    #- openstack-compute
+    all
+  gather_facts: yes
+  #become: true
+  vars_files:
+    - "vars-global.yml"
+    - "vars-etc-hosts.yml"
+  roles:
+    - etc-hosts

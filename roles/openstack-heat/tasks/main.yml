@@ -1,0 +1,254 @@
+---
+# tasks file for openstack-heat
+
+- name: Create MySQL Database - heat
+  mysql_db:
+    name: heat
+    state: present
+  run_once: yes
+
+- name: Create MySQL User - heat
+  mysql_user:
+    name: "{{ global.openstack.heat.db_user }}"
+    password: "{{ global.openstack.heat.db_pass }}"
+    host: "{{ item }}"
+    priv: 'heat.*:ALL'
+    state: present
+  with_items:
+    - "localhost"
+    - "%"
+  run_once: yes
+
+#########################################################
+
+- name: Install Heat Package
+  yum:
+    name: "{{ packages }}"
+    state: installed
+  vars:
+    packages:
+      - openstack-heat-api
+      - openstack-heat-api-cfn
+      - openstack-heat-engine
+
+#########################################################
+
+- name: Check Exist User - heat
+  shell: |
+    openstack user show heat
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_user_heat
+
+- name: Create User - heat
+  shell: |
+    openstack user create --domain {{ global.openstack.domain.default.id }} --password {{ global.openstack.heat.service.pass }} heat
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_user_heat.rc != 0
+
+- name: Check Role-Assignment - heat
+  shell: |
+    openstack role assignment list --user heat --project {{ global.openstack.heat.service.project }} --names -f value -c User
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_role_assignment_heat
+
+- name: Assignment Role to User - heat
+  shell: |
+    openstack role add --project {{ global.openstack.heat.service.project }} --user heat {{ global.openstack.heat.service.role }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: '"heat@" + global.openstack.domain.default.name not in check_role_assignment_heat.stdout_lines'
+
+#########################################################
+
+- name: Check Exist Domain - heat
+  shell: |
+    openstack domain show heat
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_domain_heat
+
+- name: Create Domain - heat
+  shell: |
+    openstack domain create --description "Stack projects and users" heat
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_domain_heat.rc != 0
+
+- name: Check Exist User - heat_domain_admin
+  shell: |
+    openstack user show heat_domain_admin
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_user_heat_domain_admin
+
+- name: Create User - heat_domain_admin
+  shell: |
+    openstack user create --domain heat --password {{ global.openstack.heat.domain_admin.pass }} heat_domain_admin
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_user_heat_domain_admin.rc != 0
+
+- name: Check Role-Assignment - heat_domain_admin
+  shell: |
+    openstack role assignment list --user heat_domain_admin --names -f value -c User
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_role_assignment_heat_domain_admin
+
+- name: Assignment Role to User - heat_domain_admin
+  shell: |
+    openstack role add --domain heat --user-domain heat --user heat_domain_admin {{ global.openstack.heat.domain_admin.role }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: '"heat_domain_admin@heat" not in check_role_assignment_heat_domain_admin.stdout_lines'
+
+- name: Check Exist Role - heat_stack_user
+  shell: |
+    openstack role show heat_stack_user
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_role_heat_stack_user
+
+- name: Create Role - heat_stack_user
+  shell: |
+    openstack role create heat_stack_user
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_role_heat_stack_user.rc != 0
+
+- name: Check Exist Role - heat_stack_owner
+  shell: |
+    openstack role show heat_stack_owner
+  environment: "{{ env.openstack.admin_openrc }}"
+  changed_when: false
+  failed_when: no
+  run_once: yes
+  register: check_role_heat_stack_owner
+
+- name: Create Role - heat_stack_owner
+  shell: |
+    openstack role create heat_stack_owner
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_role_heat_stack_owner.rc != 0
+
+#########################################################
+
+- name: Check Role-Assignment - 'heat_stack_owner' to 'demo' User
+  shell: |
+    openstack role assignment list --user demo --names -f value -c Role
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_role_assignment_heat_stack_owner_for_demo_user
+
+- name: Assignment 'heat_stack_user' Role to 'demo' User
+  shell: |
+    openstack role add --user demo --project demo heat_stack_owner
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: '"heat_stack_owner" not in check_role_assignment_heat_stack_owner_for_demo_user.stdout_lines'
+
+#########################################################
+
+- name: Check Service - heat
+  shell: |
+    openstack service show heat -f value
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_service_heat
+
+- name: Create Service - heat
+  shell: |
+    openstack service create --name heat --description "Orchestration" {{ global.openstack.heat.service.type }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_service_heat.rc != 0
+
+- name: Check Service - heat-cfn
+  shell: |
+    openstack service show heat-cfn -f value
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  register: check_service_heat_cfn
+
+- name: Create Service - heat-cfn
+  shell: |
+    openstack service create --name heat-cfn --description "Orchestration" {{ global.openstack.heat_cfn.service.type }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  when: check_service_heat_cfn.rc != 0
+
+#########################################################
+
+- name: Check Exist EndPoint - heat
+  shell: |
+    openstack endpoint list --service {{ item.service }} --interface {{ item.interface }} --region {{ item.region }} -f value -c 'Region' -c 'Service Name' -c 'Interface'
+  environment: "{{ env.openstack.admin_openrc }}"
+  failed_when: no
+  changed_when: false
+  run_once: yes
+  with_items: "{{ heat.endpoint }}"
+  register: check_exist_endpoint
+
+- name: Create EndPoint - heat
+  vars:
+    result_check_string: "{{ item.item.region }} {{ item.item.service }} {{ item.item.interface }}"
+  shell: |
+    openstack endpoint create --region {{ item.item.region }} {{ item.item.type }} {{ item.item.interface }} {{ item.item.url }}
+  environment: "{{ env.openstack.admin_openrc }}"
+  run_once: yes
+  with_items: "{{ check_exist_endpoint.results }}"
+  when: "result_check_string not in item.stdout_lines"
+
+#########################################################
+
+- name: Config Heat - /etc/heat/heat.conf
+  template:
+    src: "heat.conf.j2"
+    dest: "/etc/heat/heat.conf"
+    owner: root
+    group: heat
+    mode: '0640'
+    backup: yes
+  notify: Restart Heat Service
+
+- name: Create DB-Tables for Heat
+  become: yes
+  become_user: heat
+  shell: heat-manage db_sync
+  args:
+    executable: /bin/sh
+  run_once: yes
+
+- name: Ensure Heat Service Running
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - openstack-heat-api
+    - openstack-heat-api-cfn
+    - openstack-heat-engine
+
+

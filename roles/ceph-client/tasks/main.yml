@@ -1,0 +1,6 @@
+---
+# tasks file for ceph-client
+
+- import_tasks: setup-ceph-client.yml
+  tags:
+    - ceph-client

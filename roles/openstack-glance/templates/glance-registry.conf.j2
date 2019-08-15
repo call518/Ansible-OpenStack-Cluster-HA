@@ -1,0 +1,28 @@
+[DEFAULT]
+log_dir = {{ glance.conf.registry.default.log_dir }}
+bind_host = {{ glance.conf.registry.default.bind_host }}
+transport_url = {{ glance.conf.registry.default.transport_url }}
+http_keepalive = {{ glance.conf.registry.default.http_keepalive }}
+[database]
+connection = {{ glance.conf.registry.database.connection }}
+[keystone_authtoken]
+www_authenticate_uri = {{ glance.conf.registry.keystone_authtoken.www_authenticate_uri }}
+auth_url = {{ glance.conf.registry.keystone_authtoken.auth_url }}
+memcached_servers = {{ glance.conf.registry.keystone_authtoken.memcached_servers }}
+auth_type = {{ glance.conf.registry.keystone_authtoken.auth_type }}
+project_domain_name = {{ glance.conf.registry.keystone_authtoken.project_domain_name }}
+user_domain_name = {{ glance.conf.registry.keystone_authtoken.user_domain_name }}
+project_name = {{ glance.conf.registry.keystone_authtoken.project_name }}
+username = {{ glance.conf.registry.keystone_authtoken.username }}
+password = {{ glance.conf.registry.keystone_authtoken.password }}
+[matchmaker_redis]
+[oslo_messaging_amqp]
+[oslo_messaging_notifications]
+driver = {{ glance.conf.registry.oslo_messaging_notifications.driver }}
+transport_url = {{ glance.conf.registry.oslo_messaging_notifications.transport_url }}
+[oslo_messaging_rabbit]
+[oslo_messaging_zmq]
+[oslo_policy]
+[paste_deploy]
+flavor = {{ glance.conf.registry.paste_deploy.flavor }}
+[profiler]

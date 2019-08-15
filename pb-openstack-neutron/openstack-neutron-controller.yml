@@ -1,0 +1,11 @@
+---
+- hosts:
+    - openstack-controller
+  vars:
+  vars_files:
+    - "vars-global.yml"
+    - "vars-environment.yml"
+    - "vars-defautls-main.yml"
+  roles:
+    - openstack-neutron
+

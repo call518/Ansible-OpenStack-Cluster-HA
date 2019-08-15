@@ -1,0 +1,15 @@
+import multiprocessing
+
+bind = {{ barbican.gunicorn_config_py.bind }}
+user = {{ barbican.gunicorn_config_py.user }}
+group = {{ barbican.gunicorn_config_py.group }}
+
+timeout = {{ barbican.gunicorn_config_py.timeout }}
+backlog = {{ barbican.gunicorn_config_py.backlog }}
+keepalive = {{ barbican.gunicorn_config_py.keepalive }}
+
+workers = {{ barbican.gunicorn_config_py.workers }}
+
+loglevel = {{ barbican.gunicorn_config_py.loglevel }}
+errorlog = {{ barbican.gunicorn_config_py.errorlog }}
+accesslog = {{ barbican.gunicorn_config_py.accesslog }}

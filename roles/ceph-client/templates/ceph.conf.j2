@@ -1,0 +1,29 @@
+[global]
+fsid = {{ ceph_conf.global.fsid }}
+public_network = {{ ceph_conf.global.network.public }}
+cluster_network = {{ ceph_conf.global.network.cluster }}
+mon_initial_members = {{ ceph_conf.global.mon_initial_members }}
+mon_host = {{ ceph_conf.global.mon_host }}
+auth_cluster_required = {{ ceph_conf.global.auth.cluster_required }}
+auth_service_required = {{ ceph_conf.global.auth.service_required }}
+auth_client_required = {{ ceph_conf.global.auth.client_required }}
+
+osd pool default pg num = {{ ceph_conf.global.osd_pool_default_pg_num }}
+osd pool default pgp num = {{ ceph_conf.global.osd_pool_default_pgp_num }}
+mon max pg per osd = {{ ceph_conf.global.mon_max_pg_per_osd }}
+mon allow pool delete = {{ ceph_conf.global.mon_allow_pool_delete }}
+osd pool default size = {{ ceph_conf.global.osd_pool_default_size }}
+osd mount options xfs = "{{ ceph_conf.global.osd_mount_options_xfs }}"
+
+[client]
+rbd_cache = {{ ceph_conf.client.rbd_cache }}
+{% if inventory_hostname in groups['openstack-compute'] %}
+rbd_cache_size = {{ ceph_conf.client.rbd_cache_size }}
+rbd_cache_max_dirty = {{ ceph_conf.client.rbd_cache_max_dirty }}
+rbd_cache_target_dirty = {{ ceph_conf.client.rbd_cache_target_dirty }}
+rbd_cache_max_dirty_age = {{ ceph_conf.client.rbd_cache_max_dirty_age }}
+rbd_cache_writethrough_until_flush = {{ ceph_conf.client.rbd_cache_writethrough_until_flush }}
+rbd_concurrent_management_ops = {{ ceph_conf.client.rbd_concurrent_management_ops }}
+admin socket = {{ ceph_conf.client.admin_socket }}
+log file = {{ ceph_conf.client.log_file }}
+{% endif %}

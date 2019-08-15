@@ -1,0 +1,5 @@
+---
+# defaults file for openstack-yum-repo
+
+openstack_yum_repo_newton: centos-release-openstack-newton
+openstack_yum_repo_rocky: centos-release-openstack-rocky

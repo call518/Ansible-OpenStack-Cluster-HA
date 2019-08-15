@@ -1,0 +1,10 @@
+---
+- hosts:
+    - all
+  vars:
+  vars_files:
+    - "vars-dns-resolv.yml"
+  roles:
+    - security
+    - dns-resolv
+    - common-env

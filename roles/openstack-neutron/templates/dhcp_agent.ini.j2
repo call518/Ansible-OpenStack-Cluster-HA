@@ -1,0 +1,8 @@
+[DEFAULT]
+interface_driver = {{ dhcp_agent.conf.default.interface_driver }}
+enable_isolated_metadata = {{ dhcp_agent.conf.default.enable_isolated_metadata }}
+force_metadata = {{ dhcp_agent.conf.default.force_metadata }}
+#enable_metadata_network = True
+dnsmasq_config_file = /etc/neutron/dnsmasq-neutron.conf
+[agent]
+[ovs]

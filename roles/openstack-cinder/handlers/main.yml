@@ -1,0 +1,12 @@
+---
+# handlers file for openstack-cinder
+
+- name: Restart Cinder Service
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - openstack-cinder-api
+    - openstack-cinder-volume
+    - openstack-cinder-backup
+    - openstack-cinder-scheduler

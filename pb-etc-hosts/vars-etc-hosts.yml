@@ -1,0 +1,58 @@
+---
+hosts_add_default_ipv4: true
+hosts_add_basic_ipv6: false
+hosts_add_ansible_managed_hosts: false
+hosts_network_interface: eth0
+hosts_file_backup: yes
+#hosts_file_snippets:
+#  - snippets/hosts_blacklist
+#  - snippets/hosts_adblock
+hosts_entries:
+  ## HAProxy VIP
+  - name: "{{ global.haproxy.fqdn }}"
+    ip: "{{ global.haproxy.vip }}"
+  ## ansible-controller-1
+  - name: ansible-controller-1.novalocal
+    ip: 172.16.0.26
+    aliases:
+      - ansible-controller-1
+  ## ansible-controller-2
+  - name: ansible-controller-2.novalocal
+    ip: 172.16.0.15
+    aliases:
+      - ansible-controller-2
+  ## ansible-controller-3
+  - name: ansible-controller-3.novalocal
+    ip: 172.16.0.4
+    aliases:
+      - ansible-controller-3
+  ## ansible-network-1
+  - name: ansible-network-1.novalocal
+    ip: 172.16.0.27
+    aliases:
+      - ansible-network-1
+  ## ansible-network-2
+  - name: ansible-network-2.novalocal
+    ip: 172.16.0.5
+    aliases:
+      - ansible-network-2
+  ## ansible-compute-1
+  - name: ansible-compute-1.novalocal
+    ip: 172.16.0.22
+    aliases:
+      - ansible-compute-1
+  ## ansible-compute-2
+  - name: ansible-compute-2.novalocal
+    ip: 172.16.0.8
+    aliases:
+      - ansible-compute-2
+  ## ansible-novnc-1
+  #- name: ansible-novnc-1.novalocal
+  #  ip: 10.0.0.9
+  #  aliases:
+  #    - ansible-compute-2
+  ## ansible-ceph
+  - name: ansible-ceph.novalocal
+    ip: 10.0.0.8
+    aliases:
+      - ansible-ceph

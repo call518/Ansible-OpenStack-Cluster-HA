@@ -1,0 +1,11 @@
+sysctl_file: "/etc/sysctl.d/50-openstack-nova-compute.conf"
+sysctl_config:
+  - token: "net.bridge.bridge-nf-call-iptables"
+    value: 1
+    comment: "for OpenStack Nova Compute"
+  - token: "net.bridge.bridge-nf-call-ip6tables"
+    value: 1
+    comment: "for OpenStack Nova Compute"
+  - token: "net.ipv4.tcp_congestion_control"
+    value: "htcp"
+    comment: "for OpenStack Nova Compute"

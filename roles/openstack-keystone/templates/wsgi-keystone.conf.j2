@@ -1,0 +1,35 @@
+Listen {{ keystone_wsgi_conf.bind_address }}:{{ global.openstack.service_port.keystone }}
+
+<VirtualHost *:{{ global.openstack.service_port.keystone }}>
+    WSGIDaemonProcess keystone-public processes={{ keystone_wsgi_conf.processes }} threads={{ keystone_wsgi_conf.threads }} user={{ keystone_wsgi_conf.user }} group={{ keystone_wsgi_conf.group }} display-name=%{GROUP}
+    WSGIProcessGroup keystone-public
+    WSGIScriptAlias / /usr/bin/keystone-wsgi-public
+    WSGIApplicationGroup %{GLOBAL}
+    WSGIPassAuthorization On
+    LimitRequestBody {{ keystone_wsgi_conf.LimitRequestBody }}
+    <IfVersion >= 2.4>
+      ErrorLogFormat "%{cu}t %M"
+    </IfVersion>
+    ErrorLog /var/log/httpd/keystone.log
+    CustomLog /var/log/httpd/keystone_access.log combined
+
+    <Directory /usr/bin>
+        <IfVersion >= 2.4>
+            Require all granted
+        </IfVersion>
+        <IfVersion < 2.4>
+            Order allow,deny
+            Allow from all
+        </IfVersion>
+    </Directory>
+</VirtualHost>
+
+Alias /identity /usr/bin/keystone-wsgi-public
+<Location /identity>
+    SetHandler wsgi-script
+    Options +ExecCGI
+
+    WSGIProcessGroup keystone-public
+    WSGIApplicationGroup %{GLOBAL}
+    WSGIPassAuthorization On
+</Location>

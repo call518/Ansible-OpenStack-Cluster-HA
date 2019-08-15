@@ -1,0 +1,14 @@
+sysctl_file: "/etc/sysctl.d/50-openstack-neutron-network.conf"
+sysctl_config:
+  - token: "net.ipv4.conf.default.rp_filter"
+    value: 0
+    comment: "for OpenStack Neutron Network"
+  - token: "net.ipv4.conf.all.rp_filter"
+    value: 0
+    comment: "for OpenStack Neutron Network"
+  - token: "net.ipv4.ip_forward"
+    value: 1
+    comment: "for OpenStack Neutron Network"
+  - token: "net.ipv4.tcp_congestion_control"
+    value: "htcp"
+    comment: "for OpenStack Neutron Network"

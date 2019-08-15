@@ -1,0 +1,35 @@
+---
+- name: Ensure MariaDB is running
+  service:
+    name: mariadb
+    state: started
+
+- name: Set Password for root user
+  mysql_user:
+    name: "root"
+    host: "localhost"
+    password: "{{ mysql_root_pass }}"
+    priv: "*.*:ALL,GRANT"
+    append_privs: yes
+    host_all: yes
+    #login_user: root
+    #login_password: "{{ mysql_root_pass }}"
+    check_implicit_admin: yes
+  #when: client_my_cnf_path is not exists
+
+- name: Add ~/.my.cnf
+  template:
+    src: "client.my.cnf.j2"
+    dest: "{{ client_my_cnf_path }}"
+    owner: "root"
+    group: "root"
+    mode: 0600
+
+- name: Add Galera SST user
+  mysql_user:
+    name: "{{ galera_sst_user }}"
+    host: "localhost"
+    password: "{{ galera_sst_pass }}"
+    priv: "*.*:RELOAD,LOCK TABLES,REPLICATION CLIENT"
+  #when: client_my_cnf_path is not exists
+

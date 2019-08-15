@@ -1,0 +1,17 @@
+# Comment lines start with a hash character.
+# This is a /bin/sh script file - use ordinary envt var syntax
+
+ulimit -n {{ rabbitmq_env_ulimit_open_files }}
+
+HOME={{ rabbitmq_env_home }}
+LOG_BASE={{ rabbitmq_env_log_base }}
+MNESIA_BASE={{ rabbitmq_env_mnesia_base }}
+
+RABBITMQ_USE_LONGNAME={{ rabbitmq_env_use_longname }}
+RABBITMQ_IO_THREAD_POOL_SIZE={{ rabbitmq_env_io_thread_pool_size }}
+
+RABBITMQ_NODENAME=rabbit@{{ ansible_hostname }}
+RABBITMQ_NODE_IP_ADDRESS={{rabbitmq_interface_address}}
+RABBITMQ_NODE_PORT={{ rabbitmq_env_node_port }}
+ERL_EPMD_ADDRESS={{rabbitmq_interface_address}}
+ERL_EPMD_PORT={{ rabbitmq_env_epmd_port }}
