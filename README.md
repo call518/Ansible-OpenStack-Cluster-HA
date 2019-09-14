@@ -9,8 +9,8 @@ Contact to me: call518@gmail.com :)
 * Tested Ansible Version: ``ansible-2.4.2.0-2.el7.noarch``
 * Supported Linux is ``CentOS7(x86_64)``
 * Needed Root Permisson /w ``SSH-Key Auth``.
-* ``Node-Name`` in inventory.lst file **must be same** with result ``hostname`` command on Node.
-* Back-End Storage is ``CEPH``.
+* ``Node-Name`` in inventory.lst file **must be same** with result of ``hostname`` command on Each Node.
+* Back-End Storage is ``CEPH``. (Default)
 
 # Playbooks
 
