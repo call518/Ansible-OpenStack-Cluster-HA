@@ -55,7 +55,6 @@ octavia:
       bind_host: "{{ hostvars[inventory_hostname]['ansible_%s' | format(global.openstack.octavia.listen_interface)].ipv4.address }}"
       bind_port: 9876
     database:
-      #connection: mysql+pymysql://octavia:8665f9aaebc29e441277@dev-r2controller-001.hanpda.com/octavia
       connection: "mysql+pymysql://{{ global.openstack.octavia.db_user }}:{{ global.openstack.octavia.db_pass }}@{{ global.haproxy.fqdn }}/octavia"
     health_manager:
       event_streamer_driver: queue_event_streamer
