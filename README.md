@@ -1,4 +1,4 @@
-# Ansible Playbooks for High-Availability OpenStack Cluster
+# Ansible Playbooks for High-Availability OpenStack-Cluster
 
 This ``Ansible Playbooks`` can depploy ``OpenStack Cluster with HA automatically``.
 
